@@ -1,0 +1,26 @@
+syntax = "proto3";
+import 'srv6pmCommons.proto';
+
+service SRv6PMSenderService {
+    // start an experiment
+    rpc startExperiment (StartExperimentSenderRequest) returns (StartExperimentSenderReply) {}
+    // stop am experiment
+    rpc stopExperiment (StopExperimentRequest) returns (StopExperimentReply) {}
+    // retrive data of an experiment
+    rpc retriveExperimentResults (RetriveExperimentDataRequest) returns (ExperimentDataResponse) {}
+}
+
+message StartExperimentSenderRequest {
+    string sdlist = 1;
+    SenderOptions sender_options = 2;
+    ColorOptions color_options = 3;
+}
+
+message StartExperimentSenderReply {
+    StatusCode status = 1;
+}
+
+message SenderOptions {
+    MesurementProtocol mesurement_protocol = 1;
+    uint32 dst_udp_port = 2;
+}

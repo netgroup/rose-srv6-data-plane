@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+
+message ColorOptions {
+    uint32 interval_duration = 1;
+    uint32 delay_margin = 2;
+    uint32 numbers_of_color = 3;
+}
+
+message StopExperimentRequest {
+    string sdlist = 1;
+}
+
+message RetriveExperimentDataRequest {
+    string sdlist = 1;
+}
+
+message ExperimentDataResponse {
+    StatusCode status = 1;
+
+}
+
+message StopExperimentReply {
+    StatusCode status = 1;
+}
+
+enum MesurementProtocol {
+    STAMP = 0;
+    TWAMP = 1;
+}
+
+enum StatusCode {
+  STATUS_SUCCESS = 0;
+  STATUS_OPERATION_NOT_SUPPORTED = 1;
+  STATUS_BAD_REQUEST = 2;
+  STATUS_INTERNAL_ERROR = 3;
+}

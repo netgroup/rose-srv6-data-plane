@@ -1,29 +1,35 @@
-# README #
+# Loss Monitoring gRPC #
 
-This README would normally document whatever steps are necessary to get your application up and running.
 
-### What is this repository for? ###
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+## Prerequisites
 
-### How do I get set up? ###
+gRPC Python is supported for use with Python 2.7 or Python 3.4 or higher.
+For the project pourpose we will use Python >= 3.4
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+* Python >= 3.4
+* pip (python-pip) [https://pip.pypa.io/en/stable/quickstart/]
 
-### Contribution guidelines ###
+### Install virtualenv
 
-* Writing tests
-* Code review
-* Other guidelines
+    $ pip install virtualenv
+for more details regarding `virtualenv` [https://virtualenv.pypa.io/en/latest/]
+### Create Virtual enviroment
 
-### Who do I talk to? ###
+    $ virtualenv venv
 
-* Repo owner or admin
-* Other community or team contact
+### Actiavate Virtual enviroment already created
+
+    $ source venv/bin/activate
+everythis command must be executed every time, just before start to work with project
+
+### Install requirements (gRPC and gRPC tools)
+As soon the virtualenv is active you can install all the dependencies with the command below
+
+    $ pip install -r requirements.txt
+
+## Generate gRPC code
+
+From the base directory of the project
+
+    $ python -m grpc_tools.protoc -I proto/ --python_out=. --grpc_python_out=. proto/*
