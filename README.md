@@ -21,7 +21,7 @@ for more details regarding `virtualenv` [https://virtualenv.pypa.io/en/latest/]
 ### Actiavate Virtual enviroment already created
 
     $ source venv/bin/activate
-everythis command must be executed every time, just before start to work with project
+this command must be executed every time, just before start to work with the project
 
 ### Install requirements (gRPC and gRPC tools)
 As soon the virtualenv is active you can install all the dependencies with the command below
