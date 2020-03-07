@@ -1,0 +1,123 @@
+from concurrent import futures
+import grpc
+import logging
+import srv6pmReflector_pb2
+import srv6pmReflector_pb2_grpc
+import srv6pmSender_pb2
+import srv6pmSender_pb2_grpc
+import srv6pmCommons_pb2
+import srv6pmCommons_pb2_grpc
+
+
+def startExperimentReflector(stub):
+    request = srv6pmReflector_pb2.StartExperimentReflectorRequest()
+    request.sdlist = "AD"
+  
+    return stub.startExperiment(request=request)
+
+def stopExperimentReflector(stub):
+    request = srv6pmReflector_pb2.StopExperimentRequest()
+    request.sdlist = "AD"
+  
+    return stub.stopExperiment(request=request)
+
+def retriveExperimentResults(stub):
+    request = srv6pmReflector_pb2.RetriveExperimentDataRequest()
+    request.sdlist = "AD"
+  
+    return stub.retriveExperiment(request=request)
+
+
+
+
+
+def startExperimentSender(stub):
+    request = srv6pmSender_pb2.StartExperimentSenderRequest()
+    request.sdlist = "AD"
+  
+    return stub.startExperiment(request=request)
+
+def stopExperimentSender(stub):
+    request = srv6pmSender_pb2.StopExperimentRequest()
+    request.sdlist = "AD"
+  
+    return stub.stopExperiment(request=request)
+
+def retriveExperimentResults(stub):
+    request = srv6pmSender_pb2.RetriveExperimentDataRequest()
+    request.sdlist = "AD"
+  
+    return stub.retriveExperiment(request=request)
+
+
+
+
+############################# REFLECTOR SERVER ############################
+############ START
+
+#def run():
+    # NOTE(gRPC Python Team): .close() is possible on a channel and should be
+    # used in circumstances in which the with statement does not fit the needs
+    # of the code.
+#    with grpc.insecure_channel('localhost:50051') as channel:
+#        stub = srv6pmReflector_pb2_grpc.SRv6PMReflectorServiceStub(channel)
+#        print("-------------- startExperimentReflector --------------")
+#        res = startExperimentReflector(stub)
+#        print(res.status)
+
+
+
+
+############################# SENDER SERVER ############################
+############ START
+
+#def run():
+    # NOTE(gRPC Python Team): .close() is possible on a channel and should be
+    # used in circumstances in which the with statement does not fit the needs
+    # of the code.
+#    with grpc.insecure_channel('localhost:50052') as channel:
+#        stub = srv6pmSender_pb2_grpc.SRv6PMSenderServiceStub(channel)
+#        print("-------------- startExperimentSender --------------")
+#        res = startExperimentSender(stub)
+#        print(res.status)
+  
+
+def run():
+    # NOTE(gRPC Python Team): .close() is possible on a channel and should be
+    # used in circumstances in which the with statement does not fit the needs
+    # of the code.
+    with grpc.insecure_channel('localhost:50051') as channel:
+        stub = srv6pmReflector_pb2_grpc.SRv6PMReflectorServiceStub(channel)
+        print("\n-------------- startExperimentReflector --------------\n")
+        reflector_res = startExperimentReflector(stub)
+    	
+    if reflector_res!=None:
+        print(reflector_res.status)	#stampo pacchetti reflector
+    else: 
+	print 'ERROR'    
+
+
+
+    # NOTE(gRPC Python Team): .close() is possible on a channel and should be
+    # used in circumstances in which the with statement does not fit the needs
+    # of the code.
+    with grpc.insecure_channel('localhost:50052') as channel:
+        stub = srv6pmSender_pb2_grpc.SRv6PMSenderServiceStub(channel)
+        print("\n-------------- startExperimentSender --------------\n")
+        sender_res = startExperimentSender(stub)
+
+    if sender_res!=None:
+        print(sender_res.status)	#stampo pacchetti sender
+    else: 
+	print 'ERROR'  
+
+
+
+    print("\n-------------- packet lost --------------\n")
+    loss=sender_res.status-reflector_res.status     #calcolo perdita
+    print loss
+
+
+if __name__ == '__main__':
+    logging.basicConfig()
+    run()
