@@ -12,8 +12,13 @@ class ReflectorServicer(srv6pmReflector_pb2_grpc.SRv6PMReflectorServiceServicer)
         self.port_server = 1234
 
     def startExperiment(self, request, context):
-        
-        return srv6pmReflector_pb2.StartExperimentReflectorReply(status=15)
+
+        y = 10
+        i = 0
+        while i<10:
+                y = y + 1
+                i += 1        
+        return srv6pmReflector_pb2.StartExperimentReflectorReply(status=y)
 
     def stopExperiment(self, request, context):
         
@@ -30,7 +35,7 @@ def serve():
         ReflectorServicer(), server)
     server.add_insecure_port('127.0.0.1:50051')
     server.start()
-    server.wait_for_termination()
+    server.wait_for_termination(10)
 
 
 if __name__ == '__main__':

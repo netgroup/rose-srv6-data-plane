@@ -13,7 +13,13 @@ class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServiceServicer):
 
     def startExperiment(self, request, context):
         
-        return srv6pmSender_pb2.StartExperimentSenderReply(status=19)
+        x = 10
+        i = 0
+        while i<10:
+                x = x + 2
+                i += 1
+
+        return srv6pmSender_pb2.StartExperimentSenderReply(status=x)
 
     def stopExperiment(self, request, context):
         
@@ -30,7 +36,7 @@ def serve():
         SenderServicer(), server)
     server.add_insecure_port('127.0.0.1:50052')
     server.start()
-    server.wait_for_termination()
+    server.wait_for_termination(10)
 
 
 if __name__ == '__main__':
