@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 
+/*
 service CreationTunnel {
     // Tunnel
     rpc CreateSRv6Tunnel (SRv6EPRequest) returns (SRv6EPReply) {}
@@ -9,16 +10,20 @@ service CreationTunnel {
 
 // The SRv6EPRequest message containing a number of paths.
 message SRv6EPRequest {
-    //repeated Path path = 1;
-    string sdlist = 1;
-}
+    
+    string prefix= 1;
+    string encapmode = 2;
+    string segments = 3;
+    string device = 4;
 
+}
 
 // The SRv6EPReply message containing a simple status message
 message SRv6EPReply {
-    string sdlist = 1;
+    StatusCode status = 200;
 }
- 
+
+*/
 
 
 

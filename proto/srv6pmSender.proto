@@ -11,6 +11,29 @@ service SRv6PMSenderService {
 
 }
 
+
+service CreationTunnelSender {
+    // Tunnel
+    rpc CreateSRv6TunnelSender (SRv6EPRequestSender) returns (SRv6EPReplySender) {}
+}
+
+// The SRv6EPRequest message containing a number of paths.
+message SRv6EPRequestSender {
+    
+    string prefix= 1;
+    string encapmode = 2;
+    string segments = 3;
+    string device = 4;
+
+}
+
+// The SRv6EPReply message containing a simple status message
+message SRv6EPReplySender{
+    StatusCode status = 250;
+}
+
+
+
 message StartExperimentSenderRequest {
     string sdlist = 1;
     SenderOptions sender_options = 2;

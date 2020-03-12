@@ -36,7 +36,7 @@ def serve():
         SenderServicer(), server)
     server.add_insecure_port('127.0.0.1:50052')
     server.start()
-    server.wait_for_termination(10)
+    server.wait_for_termination()
 
 
 if __name__ == '__main__':

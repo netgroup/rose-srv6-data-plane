@@ -32,6 +32,54 @@ def startExperimentSender(stub):
     return stub.startExperiment(request=request)
 
 
+########################################
+def createTunnelSender(stub):
+    request = srv6pmSender_pb2.SRv6EPRequestSender()
+    request.prefix = "AD"
+    request.encapmode= "AD"
+    request.segments = "AD"
+    request.device = "AD"
+    #stub.startExperiment(request=request)
+    return stub.CreateSRv6TunnelSender(request=request)
+
+
+def createTunnelReflector(stub):
+    request = srv6pmReflector_pb2.SRv6EPRequestReflector()
+    request.prefix = "AD"
+    request.encapmode= "AD"
+    request.segments = "AD"
+    request.device = "AD"
+    #stub.startExperiment(request=request)
+    return stub.CreateSRv6TunnelReflector(request=request)
+
+#######################################à
+
+def run_ipv6():
+
+    with grpc.insecure_channel('127.0.0.1:50051') as channel:
+        stub = srv6pmReflector_pb2_grpc.CreationTunnelReflectorStub(channel)
+        print("\n-------------- creationTunnelReflector --------------\n")
+        reflector_res = createTunnelReflector(stub)
+        
+    if reflector_res!=None:
+        print(reflector_res.status)     
+    else: 
+        print ("ERROR")
+
+
+
+    with grpc.insecure_channel('127.0.0.1:50052') as channel:
+        stub = srv6pmSender_pb2_grpc.CreationTunnelSenderStub(channel)
+        print("\n-------------- creationTunnelSender --------------\n")
+        sender_res = createTunnelSender(stub)
+
+    if sender_res!=None:
+        print(sender_res.status)        #stampo pacchetti sender
+    else: 
+        print ("ERROR")
+
+
+
 
 
 
@@ -69,7 +117,13 @@ def run():
 
     print (loss)
 
+
+
+
+
+
 if __name__ == '__main__':
     logging.basicConfig()
-    run() 
+    run_ipv6()
+  #  run() 
     
