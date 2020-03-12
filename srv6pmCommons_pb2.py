@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=b'\n\x13srv6pmCommons.proto\"Y\n\x0c\x43olorOptions\x12\x19\n\x11interval_duration\x18\x01 \x01(\r\x12\x14\n\x0c\x64\x65lay_margin\x18\x02 \x01(\r\x12\x18\n\x10numbers_of_color\x18\x03 \x01(\r\"\'\n\x15StopExperimentRequest\x12\x0e\n\x06sdlist\x18\x01 \x01(\t\".\n\x1cRetriveExperimentDataRequest\x12\x0e\n\x06sdlist\x18\x01 \x01(\t\"5\n\x16\x45xperimentDataResponse\x12\x1b\n\x06status\x18\x01 \x01(\x0e\x32\x0b.StatusCode\"2\n\x13StopExperimentReply\x12\x1b\n\x06status\x18\x01 \x01(\x0e\x32\x0b.StatusCode**\n\x12MesurementProtocol\x12\t\n\x05STAMP\x10\x00\x12\t\n\x05TWAMP\x10\x01*w\n\nStatusCode\x12\x12\n\x0eSTATUS_SUCCESS\x10\x00\x12\"\n\x1eSTATUS_OPERATION_NOT_SUPPORTED\x10\x01\x12\x16\n\x12STATUS_BAD_REQUEST\x10\x02\x12\x19\n\x15STATUS_INTERNAL_ERROR\x10\x03\x62\x06proto3'
+  serialized_pb=b'\n\x13srv6pmCommons.proto\"\x1f\n\rSRv6EPRequest\x12\x0e\n\x06sdlist\x18\x01 \x01(\t\"\x1d\n\x0bSRv6EPReply\x12\x0e\n\x06sdlist\x18\x01 \x01(\t\"Y\n\x0c\x43olorOptions\x12\x19\n\x11interval_duration\x18\x01 \x01(\r\x12\x14\n\x0c\x64\x65lay_margin\x18\x02 \x01(\r\x12\x18\n\x10numbers_of_color\x18\x03 \x01(\r\"\'\n\x15StopExperimentRequest\x12\x0e\n\x06sdlist\x18\x01 \x01(\t\".\n\x1cRetriveExperimentDataRequest\x12\x0e\n\x06sdlist\x18\x01 \x01(\t\"5\n\x16\x45xperimentDataResponse\x12\x1b\n\x06status\x18\x01 \x01(\x0e\x32\x0b.StatusCode\"2\n\x13StopExperimentReply\x12\x1b\n\x06status\x18\x01 \x01(\x0e\x32\x0b.StatusCode**\n\x12MesurementProtocol\x12\t\n\x05STAMP\x10\x00\x12\t\n\x05TWAMP\x10\x01*w\n\nStatusCode\x12\x12\n\x0eSTATUS_SUCCESS\x10\x00\x12\"\n\x1eSTATUS_OPERATION_NOT_SUPPORTED\x10\x01\x12\x16\n\x12STATUS_BAD_REQUEST\x10\x02\x12\x19\n\x15STATUS_INTERNAL_ERROR\x10\x03\x32\x44\n\x0e\x43reationTunnel\x12\x32\n\x10\x43reateSRv6Tunnel\x12\x0e.SRv6EPRequest\x1a\x0c.SRv6EPReply\"\x00\x62\x06proto3'
 )
 
 _MESUREMENTPROTOCOL = _descriptor.EnumDescriptor(
@@ -39,8 +39,8 @@ _MESUREMENTPROTOCOL = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=310,
-  serialized_end=352,
+  serialized_start=374,
+  serialized_end=416,
 )
 _sym_db.RegisterEnumDescriptor(_MESUREMENTPROTOCOL)
 
@@ -70,8 +70,8 @@ _STATUSCODE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=354,
-  serialized_end=473,
+  serialized_start=418,
+  serialized_end=537,
 )
 _sym_db.RegisterEnumDescriptor(_STATUSCODE)
 
@@ -83,6 +83,68 @@ STATUS_OPERATION_NOT_SUPPORTED = 1
 STATUS_BAD_REQUEST = 2
 STATUS_INTERNAL_ERROR = 3
 
+
+
+_SRV6EPREQUEST = _descriptor.Descriptor(
+  name='SRv6EPRequest',
+  full_name='SRv6EPRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='sdlist', full_name='SRv6EPRequest.sdlist', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=23,
+  serialized_end=54,
+)
+
+
+_SRV6EPREPLY = _descriptor.Descriptor(
+  name='SRv6EPReply',
+  full_name='SRv6EPReply',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='sdlist', full_name='SRv6EPReply.sdlist', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=56,
+  serialized_end=85,
+)
 
 
 _COLOROPTIONS = _descriptor.Descriptor(
@@ -125,8 +187,8 @@ _COLOROPTIONS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=23,
-  serialized_end=112,
+  serialized_start=87,
+  serialized_end=176,
 )
 
 
@@ -156,8 +218,8 @@ _STOPEXPERIMENTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=114,
-  serialized_end=153,
+  serialized_start=178,
+  serialized_end=217,
 )
 
 
@@ -187,8 +249,8 @@ _RETRIVEEXPERIMENTDATAREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=155,
-  serialized_end=201,
+  serialized_start=219,
+  serialized_end=265,
 )
 
 
@@ -218,8 +280,8 @@ _EXPERIMENTDATARESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=203,
-  serialized_end=256,
+  serialized_start=267,
+  serialized_end=320,
 )
 
 
@@ -249,12 +311,14 @@ _STOPEXPERIMENTREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=258,
-  serialized_end=308,
+  serialized_start=322,
+  serialized_end=372,
 )
 
 _EXPERIMENTDATARESPONSE.fields_by_name['status'].enum_type = _STATUSCODE
 _STOPEXPERIMENTREPLY.fields_by_name['status'].enum_type = _STATUSCODE
+DESCRIPTOR.message_types_by_name['SRv6EPRequest'] = _SRV6EPREQUEST
+DESCRIPTOR.message_types_by_name['SRv6EPReply'] = _SRV6EPREPLY
 DESCRIPTOR.message_types_by_name['ColorOptions'] = _COLOROPTIONS
 DESCRIPTOR.message_types_by_name['StopExperimentRequest'] = _STOPEXPERIMENTREQUEST
 DESCRIPTOR.message_types_by_name['RetriveExperimentDataRequest'] = _RETRIVEEXPERIMENTDATAREQUEST
@@ -263,6 +327,20 @@ DESCRIPTOR.message_types_by_name['StopExperimentReply'] = _STOPEXPERIMENTREPLY
 DESCRIPTOR.enum_types_by_name['MesurementProtocol'] = _MESUREMENTPROTOCOL
 DESCRIPTOR.enum_types_by_name['StatusCode'] = _STATUSCODE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
+
+SRv6EPRequest = _reflection.GeneratedProtocolMessageType('SRv6EPRequest', (_message.Message,), {
+  'DESCRIPTOR' : _SRV6EPREQUEST,
+  '__module__' : 'srv6pmCommons_pb2'
+  # @@protoc_insertion_point(class_scope:SRv6EPRequest)
+  })
+_sym_db.RegisterMessage(SRv6EPRequest)
+
+SRv6EPReply = _reflection.GeneratedProtocolMessageType('SRv6EPReply', (_message.Message,), {
+  'DESCRIPTOR' : _SRV6EPREPLY,
+  '__module__' : 'srv6pmCommons_pb2'
+  # @@protoc_insertion_point(class_scope:SRv6EPReply)
+  })
+_sym_db.RegisterMessage(SRv6EPReply)
 
 ColorOptions = _reflection.GeneratedProtocolMessageType('ColorOptions', (_message.Message,), {
   'DESCRIPTOR' : _COLOROPTIONS,
@@ -299,5 +377,29 @@ StopExperimentReply = _reflection.GeneratedProtocolMessageType('StopExperimentRe
   })
 _sym_db.RegisterMessage(StopExperimentReply)
 
+
+
+_CREATIONTUNNEL = _descriptor.ServiceDescriptor(
+  name='CreationTunnel',
+  full_name='CreationTunnel',
+  file=DESCRIPTOR,
+  index=0,
+  serialized_options=None,
+  serialized_start=539,
+  serialized_end=607,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='CreateSRv6Tunnel',
+    full_name='CreationTunnel.CreateSRv6Tunnel',
+    index=0,
+    containing_service=None,
+    input_type=_SRV6EPREQUEST,
+    output_type=_SRV6EPREPLY,
+    serialized_options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_CREATIONTUNNEL)
+
+DESCRIPTOR.services_by_name['CreationTunnel'] = _CREATIONTUNNEL
 
 # @@protoc_insertion_point(module_scope)

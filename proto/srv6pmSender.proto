@@ -8,6 +8,7 @@ service SRv6PMSenderService {
     rpc stopExperiment (StopExperimentRequest) returns (StopExperimentReply) {}
     // retrive data of an experiment
     rpc retriveExperimentResults (RetriveExperimentDataRequest) returns (ExperimentDataResponse) {}
+
 }
 
 message StartExperimentSenderRequest {
@@ -24,3 +25,4 @@ message SenderOptions {
     MesurementProtocol mesurement_protocol = 1;
     uint32 dst_udp_port = 2;
 }
+

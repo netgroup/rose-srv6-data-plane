@@ -1,6 +1,27 @@
 syntax = "proto3";
 
 
+service CreationTunnel {
+    // Tunnel
+    rpc CreateSRv6Tunnel (SRv6EPRequest) returns (SRv6EPReply) {}
+}
+
+
+// The SRv6EPRequest message containing a number of paths.
+message SRv6EPRequest {
+    //repeated Path path = 1;
+    string sdlist = 1;
+}
+
+
+// The SRv6EPReply message containing a simple status message
+message SRv6EPReply {
+    string sdlist = 1;
+}
+ 
+
+
+
 message ColorOptions {
     uint32 interval_duration = 1;
     uint32 delay_margin = 2;
