@@ -57,7 +57,7 @@ def createTunnelReflector(stub):
 def run_ipv6():
 
     with grpc.insecure_channel('127.0.0.1:50051') as channel:
-        stub = srv6pmReflector_pb2_grpc.CreationTunnelReflectorStub(channel)
+        stub = srv6pmReflector_pb2_grpc.SRv6PMReflectorServiceStub(channel)
         print("\n-------------- creationTunnelReflector --------------\n")
         reflector_res = createTunnelReflector(stub)
         
@@ -69,7 +69,7 @@ def run_ipv6():
 
 
     with grpc.insecure_channel('127.0.0.1:50052') as channel:
-        stub = srv6pmSender_pb2_grpc.CreationTunnelSenderStub(channel)
+        stub = srv6pmSender_pb2_grpc.SRv6PMSenderServiceStub(channel)
         print("\n-------------- creationTunnelSender --------------\n")
         sender_res = createTunnelSender(stub)
 

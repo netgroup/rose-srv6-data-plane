@@ -1,5 +1,6 @@
 #!/usr/bin/python
 from concurrent import futures
+from pyroute2 import IPRoute
 import grpc
 import logging
 import srv6pmSender_pb2
@@ -32,14 +33,15 @@ class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServiceServicer):
 
 ###################################
     def CreateSRv6TunnelSender(self,request,context):
-        ip_route.route('add',
-             dst=prefix,
-             oif=ip_route.link_lookup(ifname=device)[0],
-             encap={'type': 'seg6',
-                    'mode': encapmode,
-                    'segs': segments})
+        with IPRoute() as ip_route:
+                ip_route.route('add',
+                        dst=request.prefix,
+                        oif=ip_route.link_lookup(ifname=request.device)[0],
+                        encap={'type': 'seg6',
+                                'mode': request.encapmode,
+                        'segs': request.segments})
 
-        return srv6pmSender_pb2.SRv6EPReplySender(status=200)
+        return srv6pmSender_pb2.SRv6EPReplySender(status=250)
 #####################################
 
 

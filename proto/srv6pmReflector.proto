@@ -8,13 +8,12 @@ service SRv6PMReflectorService {
     rpc stopExperiment (StopExperimentRequest) returns (StopExperimentReply) {}
     // retrive data of an experiment
     rpc retriveExperimentResults (RetriveExperimentDataRequest) returns (ExperimentDataResponse) {}
-}
-
-
-service CreationTunnelReflector {
     // Tunnel
     rpc CreateSRv6TunnelReflector (SRv6EPRequestReflector) returns (SRv6EPReplyReflector) {}
+
 }
+
+
 
 // The SRv6EPRequest message containing a number of paths.
 message SRv6EPRequestReflector {
