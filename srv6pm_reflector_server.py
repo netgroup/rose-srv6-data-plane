@@ -28,6 +28,17 @@ class ReflectorServicer(srv6pmReflector_pb2_grpc.SRv6PMReflectorServiceServicer)
         
         return srv6pmReflector_pb2.RetriveExperimentDataReply(status=0)
 
+###################################à
+    def CreateSRv6TunnelReflector(self,request,context):
+        ip_route.route('add',
+             dst=prefix,
+             oif=ip_route.link_lookup(ifname=device)[0],
+             encap={'type': 'seg6',
+                    'mode': encapmode,
+                    'segs': segments})
+
+        return srv6pmReflector_pb2.SRv6EPReplyReflector(status=200)
+#####################################
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

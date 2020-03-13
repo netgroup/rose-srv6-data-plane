@@ -32,7 +32,7 @@ def startExperimentSender(stub):
     return stub.startExperiment(request=request)
 
 
-########################################
+
 def createTunnelSender(stub):
     request = srv6pmSender_pb2.SRv6EPRequestSender()
     request.prefix = "AD"
@@ -52,7 +52,7 @@ def createTunnelReflector(stub):
     #stub.startExperiment(request=request)
     return stub.CreateSRv6TunnelReflector(request=request)
 
-#######################################à
+
 
 def run_ipv6():
 
