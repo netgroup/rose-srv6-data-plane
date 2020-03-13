@@ -7,6 +7,11 @@ import srv6pmReflector_pb2
 import srv6pmReflector_pb2_grpc
 
 
+"sysctl -w net.ipv6.conf.all.seg6_enabled=1"
+"sysctl -w net.ipv6.conf.<device>.seg6_enabled=1"
+"sysctl -w net.ipv6.conf.all.forwarding=1"
+
+
 class ReflectorServicer(srv6pmReflector_pb2_grpc.SRv6PMReflectorServiceServicer):
 
     def __init__(self):

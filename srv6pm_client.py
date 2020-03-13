@@ -35,20 +35,20 @@ def startExperimentSender(stub):
 
 def createTunnelSender(stub):
     request = srv6pmSender_pb2.SRv6EPRequestSender()
-    request.prefix = "AD"
-    request.encapmode= "AD"
-    request.segments = "AD"
-    request.device = "AD"
+    request.prefix = "1111:4::2/128"
+    request.encapmode= "encap"
+    request.segments = "1111:3::2"
+    request.device = "eth0"
     #stub.startExperiment(request=request)
     return stub.CreateSRv6TunnelSender(request=request)
 
 
 def createTunnelReflector(stub):
     request = srv6pmReflector_pb2.SRv6EPRequestReflector()
-    request.prefix = "AD"
-    request.encapmode= "AD"
-    request.segments = "AD"
-    request.device = "AD"
+    request.prefix = "2222:4::2/128"
+    request.encapmode= "encap"
+    request.segments =  "2222:3::2"
+    request.device = "eth0"
     #stub.startExperiment(request=request)
     return stub.CreateSRv6TunnelReflector(request=request)
 
