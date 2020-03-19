@@ -1,6 +1,32 @@
 syntax = "proto3";
 
 
+/*
+service CreationTunnel {
+    // Tunnel
+    rpc CreateSRv6Tunnel (SRv6EPRequest) returns (SRv6EPReply) {}
+}
+
+
+// The SRv6EPRequest message containing a number of paths.
+message SRv6EPRequest {
+    
+    string prefix= 1;
+    string encapmode = 2;
+    string segments = 3;
+    string device = 4;
+
+}
+
+// The SRv6EPReply message containing a simple status message
+message SRv6EPReply {
+    StatusCode status = 200;
+}
+
+*/
+
+
+
 message ColorOptions {
     uint32 interval_duration = 1;
     uint32 delay_margin = 2;
