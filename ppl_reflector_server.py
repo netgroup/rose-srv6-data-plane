@@ -12,50 +12,50 @@ import srv6pmCommons_pb2
 import srv6pmCommons_pb2_grpc
 
 
-class MeasCtrlReflector(Thread): 
-    def __init__(self, name): 
-        Thread.__init__(self) 
+class MeasCtrlReflector(Thread):
+    def __init__(self, name):
+        Thread.__init__(self)
         self.name = name
         self.startedMeas = False
         self.counter = {}
-        #self.lock = Thread.Lock()
+        # self.lock = Thread.Lock()
         self.scheduler = sched.scheduler(time.time, time.sleep)
-    
-    def startMeas(self,sidList):        
-        print("CTRL REFL: Start Meas for "+sidList)
-        self.counter[sidList]=0
-        self.startedMeas=True
 
-    def stopMeas(self,sidList):        
+    def startMeas(self, sidList):
+        print("CTRL REFL: Start Meas for "+sidList)
+        self.counter[sidList] = 0
+        self.startedMeas = True
+
+    def stopMeas(self, sidList):
         print("CTRL REFL: Stop Meas for "+sidList)
-        self.startedMeas=False
+        self.startedMeas = False
 
     def doMeasure(self):
-        #print("Do Meas ST:"+str(self.startedMeas))
+        # print("Do Meas ST:"+str(self.startedMeas))
         if self.startedMeas:
             print("CTRL REFL: Loss Probe / Color")
             for sl in self.counter:
-                self.counter[sl]+=10
+                self.counter[sl] += 10
         self.scheduler.enter(2, 1, self.doMeasure)
-    
+
     def getMeas(self, sidList):
         print("CTRL REFL: Get Mead Data for "+sidList)
         return self.counter[sidList]
 
-    def run(self): 
-        print ("Thread '" + self.name + "' start")
+    def run(self):
+        print("Thread '" + self.name + "' start")
         self.scheduler.enter(2, 1, self.doMeasure)
         self.scheduler.run()
-        print ("Thread '" + self.name + "' stop")
+        print("Thread '" + self.name + "' stop")
 
     def receveQuery(self, message):
-        print ("Received Query")
+        print("Received Query")
 
 
 class ReflectorServicer(srv6pmReflector_pb2_grpc.SRv6PMReflectorServiceServicer):
-    def __init__(self,measCtrlRefl):
+    def __init__(self, measCtrlRefl):
         self.port_server = 1234
-        self.measCtrlRefl = measCtrlRefl 
+        self.measCtrlRefl = measCtrlRefl
 
     def startExperiment(self, request, context):
         print("REQ - startExperiment")
@@ -64,17 +64,17 @@ class ReflectorServicer(srv6pmReflector_pb2_grpc.SRv6PMReflectorServiceServicer)
 
     def stopExperiment(self, request, context):
         print("REQ - stopExperiment")
-        self.measCtrlRefl.stopMeas(request.sdlist)              
+        self.measCtrlRefl.stopMeas(request.sdlist)
         return srv6pmCommons_pb2.StopExperimentReply(status=1)
 
     def retriveExperimentResults(self, request, context):
-        print("REQ - retriveExperimentResults") 
+        print("REQ - retriveExperimentResults")
         res = self.measCtrlRefl.getMeas(request.sdlist)
         return srv6pmCommons_pb2.ExperimentDataResponse(status=res)
 
 
 def serve():
-    thMeasRefl = MeasCtrlReflector("MeasCtrlReflector") 
+    thMeasRefl = MeasCtrlReflector("MeasCtrlReflector")
     thMeasRefl.start()
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     srv6pmReflector_pb2_grpc.add_SRv6PMReflectorServiceServicer_to_server(
