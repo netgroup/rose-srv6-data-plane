@@ -35,3 +35,28 @@ enum StatusCode {
   STATUS_BAD_REQUEST = 2;
   STATUS_INTERNAL_ERROR = 3;
 }
+
+enum AuthenticationMode {
+    HMAC_SHA_256 = 0;
+}
+
+enum MesurementType {
+    DELAY = 0;
+    LOSS = 1;
+}
+
+enum TimestampFormat {
+    PTPv2 = 0;
+    NTP = 1;
+}
+
+enum MesurementDelayMode {
+    OneWay = 0;
+    TwoWay = 1;
+    LoopbackMode = 2;
+}
+
+enum MesurementLossMode {
+    Inferred = 0;
+    Direct = 1;
+}
