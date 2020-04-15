@@ -6,10 +6,10 @@ import logging
 from threading import Thread
 import sched
 import time
-import srv6pmReflector_pb2
-import srv6pmReflector_pb2_grpc
-import srv6pmCommons_pb2
-import srv6pmCommons_pb2_grpc
+import lib.srv6pm.srv6pmReflector_pb2 as srv6pmReflector_pb2
+import lib.srv6pm.srv6pmReflector_pb2_grpc as srv6pmReflector_pb2_grpc
+import lib.srv6pm.srv6pmCommons_pb2 as srv6pmCommons_pb2
+import lib.srv6pm.srv6pmCommons_pb2_grpc as srv6pmCommons_pb2_grpc
 
 
 class MeasCtrlReflector(Thread):

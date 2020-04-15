@@ -34,4 +34,4 @@ As soon the virtualenv is active you can install all the dependencies with the c
 
 From the base directory of the project
 
-    $ python -m grpc_tools.protoc -I proto/ --python_out=. --grpc_python_out=. proto/*
+    $ python -m grpc_tools.protoc -I proto/ --python_out=lib/srv6pm --grpc_python_out=lib/srv6pm proto/*
