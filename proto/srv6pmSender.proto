@@ -1,7 +1,7 @@
 syntax = "proto3";
 import 'srv6pmCommons.proto';
 
-service SRv6PMSenderService {
+service SRv6PMSender {
     // start an experiment
     rpc startExperiment (StartExperimentSenderRequest) returns (StartExperimentSenderReply) {}
     // stop am experiment

@@ -67,7 +67,7 @@ class MeasCtrl(Thread):
         print("Received response")
 
 
-class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServiceServicer):
+class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServicer):
 
     def __init__(self, measCtrl):
         self.port_server = 1234
@@ -98,9 +98,9 @@ def serve():
     thMeasRecv.start()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    srv6pmSender_pb2_grpc.add_SRv6PMSenderServiceServicer_to_server(
+    srv6pmSender_pb2_grpc.add_SRv6PMSenderServicer_to_server(
         SenderServicer(thMeas), server)
-    server.add_insecure_port('10.1.1.1:50052')
+    server.add_insecure_port('localhost:50052')
     print("\n-------------- Server Sarted --------------\n")
     server.start()
     server.wait_for_termination()
