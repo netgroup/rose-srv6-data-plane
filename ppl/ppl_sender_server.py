@@ -6,10 +6,9 @@ from threading import Thread
 import sched
 import time
 
-import lib.srv6pm.srv6pmSender_pb2 as srv6pmSender_pb2
-import lib.srv6pm.srv6pmSender_pb2_grpc as  srv6pmSender_pb2_grpc
-import lib.srv6pm.srv6pmCommons_pb2 as srv6pmCommons_pb2
-import lib.srv6pm.srv6pmCommons_pb2_grpc as srv6pmCommons_pb2_grpc
+import sys, os
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)) + '/..')
+
 
 
 class MeasReceiver(Thread):
