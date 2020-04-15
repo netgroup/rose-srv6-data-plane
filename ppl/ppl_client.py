@@ -1,13 +1,18 @@
 from concurrent import futures
 import grpc
 import logging
+import sys
+import os
+import time
+
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)) + '/..')
+
 import srv6pmReflector_pb2
 import srv6pmReflector_pb2_grpc
 import srv6pmSender_pb2
 import srv6pmSender_pb2_grpc
 import srv6pmCommons_pb2
 import srv6pmCommons_pb2_grpc
-import time
 
 def startExperimentSender(stub):
     request = srv6pmSender_pb2.StartExperimentSenderRequest()

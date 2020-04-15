@@ -6,6 +6,9 @@ from threading import Thread
 import sched
 import time
 
+import sys, os
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)) + '/..')
+
 
 import srv6pmSender_pb2
 import srv6pmSender_pb2_grpc
