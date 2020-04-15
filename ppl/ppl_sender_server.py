@@ -1,4 +1,6 @@
 #!/usr/bin/python
+
+
 from concurrent import futures
 import grpc
 import logging
@@ -6,9 +8,10 @@ from threading import Thread
 import sched
 import time
 
-import sys, os
-sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)) + '/..')
-
+import srv6pm_grpc.srv6pmCommons_pb2
+import srv6pm_grpc.srv6pmCommons_pb2_grpc
+import srv6pm_grpc.srv6pmSender_pb2
+import srv6pm_grpc.srv6pmSender_pb2_grpc
 
 
 class MeasReceiver(Thread):

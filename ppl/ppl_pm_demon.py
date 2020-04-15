@@ -5,8 +5,7 @@ import logging
 from threading import Thread
 import sched
 import time
-import sys, os
-sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)) + '/..')
+
 
 
 import srv6pmSender_pb2
@@ -16,38 +15,38 @@ import srv6pmCommons_pb2_grpc
 
 
 
-class MeasReceiver(Thread): 
-    def __init__(self, name, ctrl): 
-        Thread.__init__(self) 
+class MeasReceiver(Thread):
+    def __init__(self, name, ctrl):
+        Thread.__init__(self)
         self.name = name
         self.measCtrl = ctrl
-    
+
     def packetRecvCallback(self):
         print ("Packets Recv Callback")
         message=""
         self.measCtrl.receveQueryResponse(message)
 
 
-    def run(self): 
+    def run(self):
         print ("Receiving Packets")
         # codice netqueue
 
 
-class MeasCtrl(Thread): 
-    def __init__(self, name): 
-        Thread.__init__(self) 
+class MeasCtrl(Thread):
+    def __init__(self, name):
+        Thread.__init__(self)
         self.name = name
         self.startedMeas = False
         self.counter = {}
         #self.lock = Thread.Lock()
         self.scheduler = sched.scheduler(time.time, time.sleep)
-    
-    def startMeas(self,sidList):        
+
+    def startMeas(self,sidList):
         print("CTRL: Start Meas for "+sidList)
         self.counter[sidList]=0
         self.startedMeas=True
 
-    def stopMeas(self,sidList):        
+    def stopMeas(self,sidList):
         print("CTRL: Stop Meas for "+sidList)
         self.startedMeas=False
 
@@ -57,12 +56,12 @@ class MeasCtrl(Thread):
             for sl in self.counter:
                 self.counter[sl]+=1
         self.scheduler.enter(2, 1, self.doMeasure)
-    
+
     def getMeas(self, sidList):
         print("CTRL: Get Mead Data for "+sidList)
         return self.counter[sidList]
 
-    def run(self): 
+    def run(self):
         print ("Thread '" + self.name + "' inizio")
         self.scheduler.enter(2, 1, self.doMeasure)
         self.scheduler.run()
@@ -77,7 +76,7 @@ class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServiceServicer):
 
     def __init__(self, measCtrl):
         self.port_server = 1234
-        self.measCtrl = measCtrl 
+        self.measCtrl = measCtrl
 
     def startExperiment(self, request, context):
         print("REQ - startExperiment")
@@ -99,9 +98,9 @@ class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServiceServicer):
 
 
 def serve():
-    thMeas = MeasCtrl("") 
+    thMeas = MeasCtrl("")
     thMeas.start()
-    thMeasRecv = MeasReceiver("",thMeas) 
+    thMeasRecv = MeasReceiver("",thMeas)
     thMeasRecv.start()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

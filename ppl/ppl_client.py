@@ -5,7 +5,7 @@ import sys
 import os
 import time
 
-sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)) + '/..')
+
 
 import srv6pmReflector_pb2
 import srv6pmReflector_pb2_grpc
