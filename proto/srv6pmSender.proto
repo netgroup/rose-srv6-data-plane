@@ -8,16 +8,13 @@ service SRv6PMSenderService {
     rpc stopExperiment (StopExperimentRequest) returns (StopExperimentReply) {}
     // retrive data of an experiment
     rpc retriveExperimentResults (RetriveExperimentDataRequest) returns (ExperimentDataResponse) {}
-    // Tunnel
-    rpc CreateSRv6TunnelSender (SRv6EPRequestSender) returns (SRv6EPReplySender) {}
-
+    
 }
 
 
 
 // The SRv6EPRequest message containing a number of paths.
 message SRv6EPRequestSender {
-    
     string prefix= 1;
     string encapmode = 2;
     string segments = 3;
