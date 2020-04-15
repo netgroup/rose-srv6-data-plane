@@ -3,6 +3,11 @@ from concurrent import futures
 from pyroute2 import IPRoute
 import grpc
 import logging
+
+import sys
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)) + '/..')
+
+
 import srv6pmSender_pb2
 import srv6pmSender_pb2_grpc
 

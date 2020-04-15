@@ -1,10 +1,20 @@
 from concurrent import futures
 import grpc
 import logging
+import os, sys
+
+import sys
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)) + '/..')
+
 import srv6pmReflector_pb2
 import srv6pmReflector_pb2_grpc
 import srv6pmSender_pb2
 import srv6pmSender_pb2_grpc
+
+#from proto_dist import srv6pmReflector_pb2
+#from proto_dist import srv6pmReflector_pb2_grpc
+#from proto_dist import srv6pmSender_pb2
+#from proto_dist import srv6pmSender_pb2_grpc
 
 def startExperimentReflector(stub):
     request = srv6pmReflector_pb2.StartExperimentReflectorRequest()
