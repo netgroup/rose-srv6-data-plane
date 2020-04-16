@@ -10,9 +10,6 @@ from threading import Thread
 import sched
 import time
 
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 
 class MeasReceiver(Thread):
@@ -70,7 +67,7 @@ class MeasCtrl(Thread):
         print("Received response")
 
 
-class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServiceServicer):
+class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServicer):
 
     def __init__(self, measCtrl):
         self.port_server = 1234

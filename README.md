@@ -32,6 +32,21 @@ As soon the virtualenv is active you can install all the dependencies with the c
 
 ## Generate gRPC code
 
+Clean the already generated gRPC code
+    $ cd grpc-services/protos
+    $ ./cleanup.sh
+
 From the base directory of the project
 
-    $ python -m grpc_tools.protoc -I proto/ --python_out=srv6pm_grpc --grpc_python_out=srv6pm_grpc proto/*
+    $ cd grpc-services/protos
+    $ ./build.sh
+
+## Use of the generated gRPC code as module
+
+first step set the env var PYTHONPATH
+
+    $ export PYTHONPATH=./grpc-services/protos/gen-py
+
+then execute the script
+
+    $ python ppl/ppl_sender_server.py

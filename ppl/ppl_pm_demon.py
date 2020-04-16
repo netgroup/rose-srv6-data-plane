@@ -9,9 +9,7 @@ import logging
 from threading import Thread
 import sched
 import time
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + '/..')
+
 
 
 class MeasReceiver(Thread):
