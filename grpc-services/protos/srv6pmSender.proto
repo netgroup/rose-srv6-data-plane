@@ -1,5 +1,6 @@
 syntax = "proto3";
-import 'srv6pmCommons.proto';
+package srv6pm;
+import "srv6pmCommons.proto";
 
 service SRv6PMSender {
     // start an experiment
@@ -10,8 +11,6 @@ service SRv6PMSender {
     rpc retriveExperimentResults (RetriveExperimentDataRequest) returns (ExperimentDataResponse) {}
 
 }
-
-
 
 // The SRv6EPRequest message containing a number of paths.
 message SRv6EPRequestSender {

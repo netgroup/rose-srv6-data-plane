@@ -56,7 +56,7 @@ class MeasCtrlReflector(Thread):
         print("Received Query")
 
 
-class ReflectorServicer(srv6pmReflector_pb2_grpc.SRv6PMReflectorServicer):
+class ReflectorServicer(srv6pmReflector_pb2_grpc.SRv6PMReflectorr):
     def __init__(self, measCtrlRefl):
         self.port_server = 1234
         self.measCtrlRefl = measCtrlRefl
@@ -81,7 +81,7 @@ def serve():
     thMeasRefl = MeasCtrlReflector("MeasCtrlReflector")
     thMeasRefl.start()
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    srv6pmReflector_pb2_grpc.add_SRv6PMReflectorServicer_to_server(
+    srv6pmReflector_pb2_grpc.add_SRv6PMReflectorr_to_server(
         ReflectorServicer(thMeasRefl), server)
     server.add_insecure_port('10.1.1.2:50052')
     print("\n-------------- Reflector Sarted --------------\n")

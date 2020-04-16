@@ -11,7 +11,6 @@ import sched
 import time
 
 
-
 class MeasReceiver(Thread):
     def __init__(self, name, ctrl):
         Thread.__init__(self)
@@ -34,7 +33,7 @@ class MeasCtrl(Thread):
         self.name = name
         self.startedMeas = False
         self.counter = {}
-        #self.lock = Thread.Lock()
+        # self.lock = Thread.Lock()
         self.scheduler = sched.scheduler(time.time, time.sleep)
 
     def startMeas(self, sidList):

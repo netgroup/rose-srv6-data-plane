@@ -1,7 +1,8 @@
 syntax = "proto3";
-import 'srv6pmCommons.proto';
+package srv6pm;
+import "srv6pmCommons.proto";
 
-service SRv6PMReflectorService {
+service SRv6PMReflector {
     // start an experiment
     rpc startExperiment (StartExperimentReflectorRequest) returns (StartExperimentReflectorReply) {}
     // stop am experiment
@@ -13,25 +14,18 @@ service SRv6PMReflectorService {
 
 }
 
-
-
 // The SRv6EPRequest message containing a number of paths.
 message SRv6EPRequestReflector {
-
     string prefix= 1;
     string encapmode = 2;
     string segments = 3;
     string device = 4;
-
 }
 
 // The SRv6EPReply message containing a simple status message
 message SRv6EPReplyReflector {
     StatusCode status = 200;
 }
-
-
-
 
 message StartExperimentReflectorRequest {
     string sdlist = 1;

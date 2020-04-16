@@ -1,4 +1,5 @@
 syntax = "proto3";
+package srv6pm;
 
 message ColorOptions {
     uint32 interval_duration = 1;
