@@ -1,13 +1,30 @@
 syntax = "proto3";
-import 'srv6pmCommons.proto';
+package srv6pm;
+import "srv6pmCommons.proto";
 
-service SRv6PMReflectorService {
+service SRv6PMReflector {
     // start an experiment
     rpc startExperiment (StartExperimentReflectorRequest) returns (StartExperimentReflectorReply) {}
     // stop am experiment
     rpc stopExperiment (StopExperimentRequest) returns (StopExperimentReply) {}
     // retrive data of an experiment
     rpc retriveExperimentResults (RetriveExperimentDataRequest) returns (ExperimentDataResponse) {}
+    // Tunnel
+    rpc CreateSRv6TunnelReflector (SRv6EPRequestReflector) returns (SRv6EPReplyReflector) {}
+
+}
+
+// The SRv6EPRequest message containing a number of paths.
+message SRv6EPRequestReflector {
+    string prefix= 1;
+    string encapmode = 2;
+    string segments = 3;
+    string device = 4;
+}
+
+// The SRv6EPReply message containing a simple status message
+message SRv6EPReplyReflector {
+    StatusCode status = 200;
 }
 
 message StartExperimentReflectorRequest {
@@ -23,4 +40,7 @@ message StartExperimentReflectorReply {
 message ReflectorOptions {
     MesurementProtocol mesurement_protocol = 1;
     uint32 dst_udp_port = 2;
+    AuthenticationMode authentication_mode = 3;
+    MesurementType mesurement_type = 4;
+    MesurementLossMode mesurement_loss_mode = 8;
 }
