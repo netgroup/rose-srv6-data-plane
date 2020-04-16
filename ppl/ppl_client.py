@@ -5,7 +5,7 @@ import sys
 import os
 import time
 
-
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 import srv6pmReflector_pb2
 import srv6pmReflector_pb2_grpc
@@ -13,7 +13,6 @@ import srv6pmSender_pb2
 import srv6pmSender_pb2_grpc
 import srv6pmCommons_pb2
 import srv6pmCommons_pb2_grpc
-
 
 def startExperimentSender(stub):
     request = srv6pmSender_pb2.StartExperimentSenderRequest()
@@ -38,29 +37,26 @@ def startExperimentReflector(stub):
     request.sdlist = "fcff:2::1/fcff:3::1/fcff:4::1"
     return stub.startExperiment(request=request)
 
-
 def stopExperimentReflector(stub):
     request = srv6pmCommons_pb2.StopExperimentRequest()
     request.sdlist = "fcff:2::1/fcff:3::1/fcff:4::1"
     return stub.startExperiment(request=request)
-
 
 def retriveExperimentResultsReflector(stub):
     request = srv6pmCommons_pb2.RetriveExperimentDataRequest()
     request.sdlist = "fcff:2::1/fcff:3::1/fcff:4::1"
     return stub.retriveExperimentResults(request=request)
 
-
 def test_meas():
     with grpc.insecure_channel('10.1.1.1:50052') as channel:
-        stub = srv6pmSender_pb2_grpc.SRv6PMSenderStub(channel)
+        stub = srv6pmSender_pb2_grpc.SRv6PMSenderServiceStub(channel)
 
         print("\n-------------- startMeas --------------\n")
         sender_res = startExperimentSender(stub)
-        if sender_res is not None and sender_res.status == 1:
+        if sender_res!=None and sender_res.status==1:
             print("Started Measure RES:"+str(sender_res.status))
         else:
-            print("ERROR startExperimentSender  RES:"+sender_res)
+            print ("ERROR startExperimentSender  RES:"+sender_res)
 
         for i in range(3):
             time.sleep(5)

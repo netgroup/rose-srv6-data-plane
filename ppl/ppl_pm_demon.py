@@ -1,18 +1,17 @@
 #!/usr/bin/python
+import srv6pmCommons_pb2_grpc
+import srv6pmCommons_pb2
+import srv6pmSender_pb2_grpc
+import srv6pmSender_pb2
 from concurrent import futures
 import grpc
 import logging
 from threading import Thread
 import sched
 import time
-
-
-
-import srv6pmSender_pb2
-import srv6pmSender_pb2_grpc
-import srv6pmCommons_pb2
-import srv6pmCommons_pb2_grpc
-
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 
 class MeasReceiver(Thread):
@@ -22,13 +21,12 @@ class MeasReceiver(Thread):
         self.measCtrl = ctrl
 
     def packetRecvCallback(self):
-        print ("Packets Recv Callback")
-        message=""
+        print("Packets Recv Callback")
+        message = ""
         self.measCtrl.receveQueryResponse(message)
 
-
     def run(self):
-        print ("Receiving Packets")
+        print("Receiving Packets")
         # codice netqueue
 
 
@@ -41,20 +39,20 @@ class MeasCtrl(Thread):
         #self.lock = Thread.Lock()
         self.scheduler = sched.scheduler(time.time, time.sleep)
 
-    def startMeas(self,sidList):
+    def startMeas(self, sidList):
         print("CTRL: Start Meas for "+sidList)
-        self.counter[sidList]=0
-        self.startedMeas=True
+        self.counter[sidList] = 0
+        self.startedMeas = True
 
-    def stopMeas(self,sidList):
+    def stopMeas(self, sidList):
         print("CTRL: Stop Meas for "+sidList)
-        self.startedMeas=False
+        self.startedMeas = False
 
     def doMeasure(self):
         if self.startedMeas:
             print("CTRL: Loss Probe / Color")
             for sl in self.counter:
-                self.counter[sl]+=1
+                self.counter[sl] += 1
         self.scheduler.enter(2, 1, self.doMeasure)
 
     def getMeas(self, sidList):
@@ -62,14 +60,13 @@ class MeasCtrl(Thread):
         return self.counter[sidList]
 
     def run(self):
-        print ("Thread '" + self.name + "' inizio")
+        print("Thread '" + self.name + "' inizio")
         self.scheduler.enter(2, 1, self.doMeasure)
         self.scheduler.run()
-        print ("Thread '" + self.name + "' fine")
+        print("Thread '" + self.name + "' fine")
 
     def receveQueryResponse(self, message):
-        print ("Received response")
-
+        print("Received response")
 
 
 class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServiceServicer):
@@ -81,13 +78,13 @@ class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServiceServicer):
     def startExperiment(self, request, context):
         print("REQ - startExperiment")
         self.measCtrl.startMeas(request.sdlist)
-        res=1
+        res = 1
         return srv6pmSender_pb2.StartExperimentSenderReply(status=res)
 
     def stopExperiment(self, request, context):
         print("REQ - stopExperiment")
         self.measCtrl.stopMeas(request.sdlist)
-        res=1
+        res = 1
         return srv6pmCommons_pb2.StopExperimentReply(status=res)
 
     def retriveExperimentResults(self, request, context):
@@ -96,11 +93,10 @@ class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServiceServicer):
         return srv6pmCommons_pb2.ExperimentDataResponse(status=res)
 
 
-
 def serve():
     thMeas = MeasCtrl("")
     thMeas.start()
-    thMeasRecv = MeasReceiver("",thMeas)
+    thMeasRecv = MeasReceiver("", thMeas)
     thMeasRecv.start()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

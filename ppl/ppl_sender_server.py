@@ -1,6 +1,8 @@
 #!/usr/bin/python
-
-
+import srv6pmCommons_pb2_grpc
+import srv6pmCommons_pb2
+import srv6pmSender_pb2_grpc
+import srv6pmSender_pb2
 from concurrent import futures
 import grpc
 import logging
@@ -8,10 +10,9 @@ from threading import Thread
 import sched
 import time
 
-import srv6pm_grpc.srv6pmCommons_pb2
-import srv6pm_grpc.srv6pmCommons_pb2_grpc
-import srv6pm_grpc.srv6pmSender_pb2
-import srv6pm_grpc.srv6pmSender_pb2_grpc
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 
 class MeasReceiver(Thread):
@@ -36,7 +37,7 @@ class MeasCtrl(Thread):
         self.name = name
         self.startedMeas = False
         self.counter = {}
-        # self.lock = Thread.Lock()
+        #self.lock = Thread.Lock()
         self.scheduler = sched.scheduler(time.time, time.sleep)
 
     def startMeas(self, sidList):
@@ -69,7 +70,7 @@ class MeasCtrl(Thread):
         print("Received response")
 
 
-class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServicer):
+class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServiceServicer):
 
     def __init__(self, measCtrl):
         self.port_server = 1234

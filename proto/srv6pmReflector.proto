@@ -8,7 +8,30 @@ service SRv6PMReflectorService {
     rpc stopExperiment (StopExperimentRequest) returns (StopExperimentReply) {}
     // retrive data of an experiment
     rpc retriveExperimentResults (RetriveExperimentDataRequest) returns (ExperimentDataResponse) {}
+    // Tunnel
+    rpc CreateSRv6TunnelReflector (SRv6EPRequestReflector) returns (SRv6EPReplyReflector) {}
+
 }
+
+
+
+// The SRv6EPRequest message containing a number of paths.
+message SRv6EPRequestReflector {
+
+    string prefix= 1;
+    string encapmode = 2;
+    string segments = 3;
+    string device = 4;
+
+}
+
+// The SRv6EPReply message containing a simple status message
+message SRv6EPReplyReflector {
+    StatusCode status = 200;
+}
+
+
+
 
 message StartExperimentReflectorRequest {
     string sdlist = 1;
