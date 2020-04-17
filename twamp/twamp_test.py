@@ -5,8 +5,6 @@ import sys
 import os
 import time
 
-sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)) + '/..')
-
 import srv6pmReflector_pb2
 import srv6pmReflector_pb2_grpc
 import srv6pmSender_pb2
@@ -49,7 +47,7 @@ def retriveExperimentResultsReflector(stub):
 
 def test_meas():
     with grpc.insecure_channel('10.1.1.1:50052') as channel:
-        stub = srv6pmSender_pb2_grpc.SRv6PMSenderServiceStub(channel)
+        stub = srv6pmSender_pb2_grpc.SRv6PMSenderStub(channel)
 
         print("\n-------------- startMeas --------------\n")
         sender_res = startExperimentSender(stub)
@@ -79,8 +77,8 @@ def test_meas():
 def test_meas_2():
     with grpc.insecure_channel('10.1.1.1:50052') as channel1, \
         grpc.insecure_channel('10.1.1.2:50052') as channel2:
-        sender = srv6pmSender_pb2_grpc.SRv6PMSenderServiceStub(channel1)
-        reflector = srv6pmReflector_pb2_grpc.SRv6PMReflectorServiceStub(channel2)
+        sender = srv6pmSender_pb2_grpc.SRv6PMSenderStub(channel1)
+        reflector = srv6pmReflector_pb2_grpc.SRv6PMReflectorStub(channel2)
 
         print("\n-------------- startMeas --------------\n")
         sender_res = startExperimentSender(sender)
