@@ -16,6 +16,11 @@ class Servicer(srv6pmService_pb2_grpc.SRv6PMServicer):
         res = 1
         return srv6pmService_pb2.StartExperimentSenderReply(status=res)
 
+    def startExperimentReflector(self, request, context):
+        logger.info('Service startExperimentSender')
+        res = 1
+        return srv6pmService_pb2.StartExperimentReflectorReply(status=res)
+
     def stopExperiment(self, request, context):
         logger.info('Service stopExperiment')
         res = 1
