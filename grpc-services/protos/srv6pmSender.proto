@@ -26,8 +26,6 @@ message SRv6EPReplySender{
     StatusCode status = 250;
 }
 
-
-
 message StartExperimentSenderRequest {
     string sdlist = 1;
     SenderOptions sender_options = 2;

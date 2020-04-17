@@ -1,28 +1,28 @@
 #!/usr/bin/python
 import srv6pmCommons_pb2_grpc
 import srv6pmCommons_pb2
-import srv6pmSender_pb2_grpc
-import srv6pmSender_pb2
+import srv6pmService_pb2_grpc
+import srv6pmService_pb2
 from concurrent import futures
 import grpc
 import logging
 import logging.config
 
 
-class SenderServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServicer):
+class Servicer(srv6pmService_pb2_grpc.SRv6PMServicer):
 
-    def startExperiment(self, request, context):
-        logger.info('Sender service startExperiment')
+    def startExperimentSender(self, request, context):
+        logger.info('Service startExperimentSender')
         res = 1
-        return srv6pmSender_pb2.StartExperimentSenderReply(status=res)
+        return srv6pmService_pb2.StartExperimentSenderReply(status=res)
 
     def stopExperiment(self, request, context):
-        logger.info('Sender service stopExperiment')
+        logger.info('Service stopExperiment')
         res = 1
         return srv6pmCommons_pb2.StopExperimentReply(status=res)
 
     def retriveExperimentResults(self, request, context):
-        logger.info('Sender service retriveExperimentResults')
+        logger.info('Service retriveExperimentResults')
         return srv6pmCommons_pb2.ExperimentDataResponse(status=res)
 
 

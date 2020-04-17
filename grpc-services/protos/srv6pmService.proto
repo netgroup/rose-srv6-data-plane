@@ -1,0 +1,17 @@
+syntax = "proto3";
+package srv6pm;
+import "srv6pmCommons.proto";
+import "srv6pmSender.proto";
+import "srv6pmReflector.proto";
+
+service SRv6PM {
+    // start an experiment Sender
+    rpc startExperimentSender (StartExperimentSenderRequest) returns (StartExperimentSenderReply) {}
+    // start an experiment Reflector
+    rpc startExperimentReflector (StartExperimentReflectorRequest) returns (StartExperimentReflectorReply) {}
+    // stop am experiment
+    rpc stopExperiment (StopExperimentRequest) returns (StopExperimentReply) {}
+    // retrive data of an experiment
+    rpc retriveExperimentResults (RetriveExperimentDataRequest) returns (ExperimentDataResponse) {}
+
+}
