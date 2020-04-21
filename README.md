@@ -45,7 +45,7 @@ From the base directory of the project
 
 first step set the env var PYTHONPATH
 
-    $ export PYTHONPATH=./grpc-services/protos/gen-py
+    $ export PYTHONPATH="${PYTHONPATH}:./grpc-services/protos/gen-py:./twamp"
 
 then execute the script
 

@@ -7,6 +7,7 @@ from threading import Thread
 import sched
 import time
 from scapy.all import *
+from scapy.layers.inet import IP,UDP
 
 
 # FRPC protocol
@@ -19,25 +20,31 @@ class TestPacketReceiver(Thread):
     def __init__(self, ctrl , interface):
         Thread.__init__(self) 
         self.interface = interface
-        self.TWAMPController = ctrl
+        self.SessionSender = ctrl
 
     def packetRecvCallback(self, packet):
         print("Packets Recv Callback")
+        packet[UDP].decode_payload_as(Raw)
+        print(packet.show())
+		
         ip_layer = packet.getlayer(IP)
         print("[!] New Packet: {src} -> {dst}".format(src=ip_layer.src, dst=ip_layer.dst))
         message = ""
-        self.TWAMPController.receveQueryResponse(message)
+        raw_layer = packet.getlayer(Raw)
+        print("[!] TWAMP Payload: {payload} ".format(payload=raw_layer.load))
+        self.SessionSender.receveQueryResponse(message)
 
     def run(self):
-        print("[*] TestPacketReceiver Start sniffing...")
-        sniff(iface=self.interface, filter="udp", prn=self.packetRecvCallback)
-        print("[*] TestPacketReceiver Stop sniffing")
+        print("TestPacketReceiver Start sniffing...")
+        sniff(iface=self.interface, filter="udp and port 50050", prn=self.packetRecvCallback)
+        print("TestPacketReceiver Stop sniffing")
         # codice netqueue
 
 
-class TWAMPController(Thread):
+class SessionSender(Thread):
     def __init__(self):
         Thread.__init__(self)
+        self.SessionSenderRecv = TestPacketReceiver(self,"ctrl0") # packet recever
         self.startedMeas = False
         self.counter = {}
         # self.lock = Thread.Lock()
@@ -64,19 +71,22 @@ class TWAMPController(Thread):
         return self.counter[sidList]
 
     def run(self):
-        print("TWAMPController start")
+        print("Starting the Packet Receiver")
+        self.SessionSenderRecv.start()
+
+        print("SessionSender start")
         self.scheduler.enter(2, 1, self.doMeasure)
         self.scheduler.run()
-        print("TWAMPController stop")
+        print("SessionSender stop")
 
     def receveQueryResponse(self, message):
         print("Received response")
 
 
-class MeasCtrlReflector(Thread):
-    def __init__(self, name):
+class SessionReflector(Thread):
+    def __init__(self):
         Thread.__init__(self)
-        self.name = name
+        self.name = "SessionReflector"
         self.startedMeas = False
         self.counter = {}
         # self.lock = Thread.Lock()
@@ -114,35 +124,34 @@ class MeasCtrlReflector(Thread):
 
 
 
-class TWAMPServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServicer):
-
-    def __init__(self, TWAMPController,MeasCtrlReflector):
-        self.port_server = 1234
-        self.TWAMPController = TWAMPController
-        self.MeasCtrlReflector = MeasCtrlReflector
+class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
+    def __init__(self, SessionSender,SessionReflector):
+        self.port_server = 20000
+        self.SessionSender = SessionSender
+        self.SessionReflector = SessionReflector
 
     def startExperimentSender(self, request, context):
         print("REQ - startExperiment")
-        self.TWAMPController.startMeas(request.sdlist)
+        self.SessionSender.startMeas(request.sdlist)
         res = 1
-        return srv6pmSender_pb2.StartExperimentSenderReply(status=res)
+        return srv6pmService_pb2.StartExperimentSenderReply(status=res)
 
     def stopExperimentSender(self, request, context):
         print("REQ - stopExperiment")
-        self.TWAMPController.stopMeas(request.sdlist)
+        self.SessionSender.stopMeas(request.sdlist)
         res = 1
         return srv6pmCommons_pb2.StopExperimentReply(status=res)
 
     def retriveExperimentResultsSender(self, request, context):
         print("REQ - retriveExperimentResults")
-        res = self.TWAMPController.getMeas(request.sdlist)
+        res = self.SessionSender.getMeas(request.sdlist)
         return srv6pmCommons_pb2.ExperimentDataResponse(status=res)
 
 
     def startExperimentReflector(self, request, context):
         print("REQ - startExperiment")
         self.measCtrlRefl.startMeas(request.sdlist)
-        return srv6pmReflector_pb2.StartExperimentReflectorReply(status=1)
+        return srv6pmService_pb2.StartExperimentReflectorReply(status=1)
 
     def stopExperimentReflector(self, request, context):
         print("REQ - stopExperiment")
@@ -155,21 +164,23 @@ class TWAMPServicer(srv6pmSender_pb2_grpc.SRv6PMSenderServicer):
         return srv6pmCommons_pb2.ExperimentDataResponse(status=res)
 
 
-def serve():
-    thMeas = TWAMPController()
-    thMeas.start()
-    thMeasRecv = TestPacketReceiver(thMeas, "ctrl0")
-    thMeasRecv.start()
+def serve(ipaddr,gprcPort):
+    sessionsender = SessionSender()
+    sessionsender.start()
+    sessionreflector = SessionReflector()
+    sessionreflector.start()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    srv6pmDemon_pb2_grpc.add_SRv6PMDemonServicer_to_server(
-        TWAMPServicer(thMeas), server)
-    server.add_insecure_port('localhost:50050')
+    srv6pmService_pb2_grpc.add_SRv6PMServicer_to_server(TWAMPController(sessionsender,sessionreflector), server)
+    server.add_insecure_port("{ip}:{port}".format(ip=ipaddr,port=gprcPort))
     print("\n-------------- Start Demon --------------\n")
     server.start()
     server.wait_for_termination()
 
 
 if __name__ == '__main__':
+    ipaddr =  sys.argv[1]
+    gprcPort =  sys.argv[2]
+
     logging.basicConfig()
-    serve()
+    serve(ipaddr,gprcPort)
