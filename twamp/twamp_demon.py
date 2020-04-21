@@ -15,12 +15,18 @@ import srv6pmCommons_pb2_grpc
 import srv6pmCommons_pb2
 import srv6pmService_pb2_grpc
 import srv6pmService_pb2
+import srv6pmReflector_pb2
+import srv6pmReflector_pb2_grpc
+import srv6pmSender_pb2
+import srv6pmSender_pb2_grpc
+
 
 class TestPacketReceiver(Thread):
-    def __init__(self, ctrl , interface):
+    def __init__(self, interface, sender, reflector ):
         Thread.__init__(self) 
         self.interface = interface
-        self.SessionSender = ctrl
+        self.SessionSender = sender
+        self.SessionReflector = reflector
 
     def packetRecvCallback(self, packet):
         print("Packets Recv Callback")
@@ -36,15 +42,16 @@ class TestPacketReceiver(Thread):
 
     def run(self):
         print("TestPacketReceiver Start sniffing...")
-        sniff(iface=self.interface, filter="udp and port 50050", prn=self.packetRecvCallback)
+        sniff(iface=self.interface, filter="udp and port 862", prn=self.packetRecvCallback)
         print("TestPacketReceiver Stop sniffing")
         # codice netqueue
+
+
 
 
 class SessionSender(Thread):
     def __init__(self):
         Thread.__init__(self)
-        self.SessionSenderRecv = TestPacketReceiver(self,"ctrl0") # packet recever
         self.startedMeas = False
         self.counter = {}
         # self.lock = Thread.Lock()
@@ -71,8 +78,6 @@ class SessionSender(Thread):
         return self.counter[sidList]
 
     def run(self):
-        print("Starting the Packet Receiver")
-        self.SessionSenderRecv.start()
 
         print("SessionSender start")
         self.scheduler.enter(2, 1, self.doMeasure)
@@ -81,6 +86,8 @@ class SessionSender(Thread):
 
     def receveQueryResponse(self, message):
         print("Received response")
+
+
 
 
 class SessionReflector(Thread):
@@ -106,7 +113,7 @@ class SessionReflector(Thread):
         if self.startedMeas:
             print("CTRL REFL: Loss Probe / Color")
             for sl in self.counter:
-                self.counter[sl] += 10
+                self.counter[sl] += 1
         self.scheduler.enter(2, 1, self.doMeasure)
 
     def getMeas(self, sidList):
@@ -127,48 +134,46 @@ class SessionReflector(Thread):
 class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
     def __init__(self, SessionSender,SessionReflector):
         self.port_server = 20000
-        self.SessionSender = SessionSender
-        self.SessionReflector = SessionReflector
+        self.sender = SessionSender
+        self.reflector = SessionReflector
 
     def startExperimentSender(self, request, context):
         print("REQ - startExperiment")
-        self.SessionSender.startMeas(request.sdlist)
+        self.sender.startMeas(request.sdlist)
         res = 1
-        return srv6pmService_pb2.StartExperimentSenderReply(status=res)
+        return srv6pmSender_pb2.StartExperimentSenderReply(status=res)
 
     def stopExperimentSender(self, request, context):
         print("REQ - stopExperiment")
-        self.SessionSender.stopMeas(request.sdlist)
+        self.sender.stopMeas(request.sdlist)
         res = 1
         return srv6pmCommons_pb2.StopExperimentReply(status=res)
 
-    def retriveExperimentResultsSender(self, request, context):
-        print("REQ - retriveExperimentResults")
-        res = self.SessionSender.getMeas(request.sdlist)
-        return srv6pmCommons_pb2.ExperimentDataResponse(status=res)
-
-
     def startExperimentReflector(self, request, context):
         print("REQ - startExperiment")
-        self.measCtrlRefl.startMeas(request.sdlist)
-        return srv6pmService_pb2.StartExperimentReflectorReply(status=1)
+        self.reflector.startMeas(request.sdlist)
+        return srv6pmReflector_pb2.StartExperimentReflectorReply(status=1)
 
     def stopExperimentReflector(self, request, context):
         print("REQ - stopExperiment")
-        self.measCtrlRefl.stopMeas(request.sdlist)
+        self.reflector.stopMeas(request.sdlist)
+        res = 1
         return srv6pmCommons_pb2.StopExperimentReply(status=1)
 
-    def retriveExperimentResultsReflector(self, request, context):
+    def retriveExperimentResults(self, request, context):
         print("REQ - retriveExperimentResults")
-        res = self.measCtrlRefl.getMeas(request.sdlist)
+        res = self.sender.getMeas(request.sdlist)
+        res = 1
         return srv6pmCommons_pb2.ExperimentDataResponse(status=res)
 
 
-def serve(ipaddr,gprcPort):
+def serve(ipaddr,gprcPort,recvInterf):
     sessionsender = SessionSender()
-    sessionsender.start()
     sessionreflector = SessionReflector()
+    packetRecv = TestPacketReceiver(recvInterf,sessionsender,sessionreflector)
     sessionreflector.start()
+    sessionsender.start()
+    packetRecv.start()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     srv6pmService_pb2_grpc.add_SRv6PMServicer_to_server(TWAMPController(sessionsender,sessionreflector), server)
@@ -181,6 +186,7 @@ def serve(ipaddr,gprcPort):
 if __name__ == '__main__':
     ipaddr =  sys.argv[1]
     gprcPort =  sys.argv[2]
+    recvInterf =  sys.argv[3]
 
     logging.basicConfig()
-    serve(ipaddr,gprcPort)
+    serve(ipaddr,gprcPort,recvInterf)
