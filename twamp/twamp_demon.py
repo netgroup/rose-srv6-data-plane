@@ -132,8 +132,8 @@ class SessionReflector(Thread):
 
 
 class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
-    def __init__(self, SessionSender,SessionReflector):
-        self.port_server = 20000
+    def __init__(self, SessionSender,SessionReflector): 
+        self.port_server = 20000 
         self.sender = SessionSender
         self.reflector = SessionReflector
 
