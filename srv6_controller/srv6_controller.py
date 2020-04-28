@@ -25,6 +25,20 @@ DEFAULT_SECURE = False
 DEFAULT_CERTIFICATE = 'client_cert.pem'
 
 
+status_code_to_str = {
+    srv6pmCommons_pb2.STATUS_SUCCESS: 'Success',
+    srv6pmCommons_pb2.STATUS_OPERATION_NOT_SUPPORTED: 'Operation not supported',
+    srv6pmCommons_pb2.STATUS_BAD_REQUEST: 'Bad request',
+    srv6pmCommons_pb2.STATUS_INTERNAL_ERROR: 'Internal error',
+    srv6pmCommons_pb2.STATUS_INVALID_GRPC_REQUEST: 'Invalid gRPC request',
+    srv6pmCommons_pb2.STATUS_FILE_EXISTS: 'An entity already exists',
+    srv6pmCommons_pb2.STATUS_NO_SUCH_PROCESS: 'Entity not found',
+    srv6pmCommons_pb2.STATUS_INVALID_ACTION: 'Invalid seg6local action',
+    srv6pmCommons_pb2.STATUS_GRPC_SERVICE_UNAVAILABLE: 'gRPC service not available',
+    srv6pmCommons_pb2.STATUS_GRPC_UNAUTHORIZED: 'Unauthorized'
+}
+
+
 # Python class representing a SRv6 controller
 class SRv6Controller:
     """
@@ -104,6 +118,18 @@ class SRv6Controller:
         # Return the channel
         return channel
 
+    def print_status_message(self, status_code, success_msg, failure_msg):
+        if status_code == srv6pmCommons_pb2.STATUS_SUCCESS:
+            # Success
+            print('%s (status code %s - %s)'
+                  % (success_msg, status_code,
+                     status_code_to_str.get(status_code, 'Unknown')))
+        else:
+            # Error
+            print('%s (status code %s - %s)'
+                  % (failure_msg, status_code,
+                     status_code_to_str.get(status_code, 'Unknown')))
+
     def _create_uni_srv6_path(self, ingress, egress,
                               destination, segments, localseg=None):
         """ Create a unidirectional SRv6 tunnel from <ingress> to <egress>
@@ -136,11 +162,20 @@ class SRv6Controller:
         # Equivalent to the command:
         #    ingress: ip -6 route add <destination> encap seg6 mode encap \
         #            segs <segments> dev <device>
-        grpc_client.add_srv6_path(
+        res = grpc_client.add_srv6_path(
             channel=ingress_channel,
             destination=destination,
             segments=segments
         )
+        # Pretty print status code
+        self.print_status_message(
+            status_code=res,
+            success_msg='Added SRv6 Path',
+            failure_msg='Error in add_srv6_path()'
+        )
+        # If an error occurred, abort the operation
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
         # Perform "Decapsulaton and Specific IPv6 Table Lookup" function
         # on the egress node <egress>
         # The decap function is associated to the <localseg> passed in
@@ -151,12 +186,23 @@ class SRv6Controller:
         #    egress: ip -6 route add <localseg> encap seg6local action \
         #            End.DT6 table 254 dev <device>
         if localseg is not None:
-            grpc_client.add_srv6_behavior(
+            res = grpc_client.add_srv6_behavior(
                 channel=egress_channel,
                 segment=localseg,
                 action='End.DT6',
                 table=254
             )
+            # Pretty print status code
+            self.print_status_message(
+                status_code=res,
+                success_msg='Added SRv6 Behavior',
+                failure_msg='Error in add_srv6_behavior()'
+            )
+            # If an error occurred, abort the operation
+            if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+                return res
+        # Success
+        return srv6pmCommons_pb2.STATUS_SUCCESS
 
     def create_srv6_path(self, node_l, node_r,
                          sidlist_lr, sidlist_rl, dest_lr, dest_rl,
@@ -194,21 +240,29 @@ class SRv6Controller:
         """
 
         # Create a unidirectional SRv6 tunnel from <node_l> to <node_r>
-        self._create_uni_srv6_path(
+        res = self._create_uni_srv6_path(
             ingress=node_l,
             egress=node_r,
             destination=dest_lr,
             segments=sidlist_lr,
             localseg=localseg_lr
         )
+        # If an error occurred, abort the operation
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
         # Create a unidirectional SRv6 tunnel from <node_r> to <node_l>
-        self._create_uni_srv6_path(
+        res = self._create_uni_srv6_path(
             ingress=node_r,
             egress=node_l,
             destination=dest_rl,
             segments=sidlist_rl,
             localseg=localseg_rl
         )
+        # If an error occurred, abort the operation
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
+        # Success
+        return srv6pmCommons_pb2.STATUS_SUCCESS
 
     def _destroy_uni_srv6_path(self, ingress, egress,
                                destination, localseg=None):
@@ -243,10 +297,19 @@ class SRv6Controller:
         # Equivalent to the command:
         #    ingress: ip -6 route del <destination> encap seg6 mode encap \
         #             segs <segments> dev <device>
-        grpc_client.remove_srv6_path(
+        res = grpc_client.remove_srv6_path(
             channel=ingress_channel,
             destination=destination
         )
+        # Pretty print status code
+        self.print_status_message(
+            status_code=res,
+            success_msg='Removed SRv6 Path',
+            failure_msg='Error in remove_srv6_path()'
+        )
+        # If an error occurred, abort the operation
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
         # Remove "Decapsulaton and Specific IPv6 Table Lookup" function
         # from the egress node <egress>
         # The decap function associated to the <localseg> passed in
@@ -257,10 +320,21 @@ class SRv6Controller:
         #    egress: ip -6 route del <localseg> encap seg6local action \
         #            End.DT6 table 254 dev <device>
         if localseg is not None:
-            grpc_client.remove_srv6_behavior(
+            res = grpc_client.remove_srv6_behavior(
                 channel=egress_channel,
                 segment=localseg
             )
+            # Pretty print status code
+            self.print_status_message(
+                status_code=res,
+                success_msg='Removed SRv6 behavior',
+                failure_msg='Error in remove_srv6_behavior()'
+            )
+            # If an error occurred, abort the operation
+            if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+                return res
+        # Success
+        return srv6pmCommons_pb2.STATUS_SUCCESS
 
     def destroy_srv6_path(self, node_l, node_r,
                           dest_lr, dest_rl, localseg_lr, localseg_rl):
@@ -295,19 +369,27 @@ class SRv6Controller:
         """
 
         # Create a unidirectional SRv6 tunnel from <node_l> to <node_r>
-        self._destroy_uni_srv6_path(
+        res = self._destroy_uni_srv6_path(
             ingress=node_l,
             egress=node_r,
             destination=dest_lr,
             localseg=localseg_lr
         )
+        # If an error occurred, abort the operation
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
         # Create a unidirectional SRv6 tunnel from <node_r> to <node_l>
-        self._destroy_uni_srv6_path(
+        res = self._destroy_uni_srv6_path(
             ingress=node_r,
             egress=node_l,
             destination=dest_rl,
             localseg=localseg_rl
         )
+        # If an error occurred, abort the operation
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
+        # Success
+        return srv6pmCommons_pb2.STATUS_SUCCESS
 
     # Start the measurement process
     def start_measurement(self, measure_id, sender, reflector,
@@ -343,11 +425,15 @@ class SRv6Controller:
             delay_margin=delay_margin,
             number_of_color=number_of_color
         )
-        if refl_res is not None and \
-                refl_res.status == srv6pmCommons_pb2.STATUS_SUCCESS:
-            print("Started Measure Reflector RES: %s" % refl_res.status)
-        else:
-            print("ERROR startExperimentReflector  RES: %s" % refl_res)
+        # Pretty print status code
+        self.print_status_message(
+            status_code=refl_res.status,
+            success_msg='Started Measure Reflector',
+            failure_msg='Error in startExperimentReflector()'
+        )
+        # Check for errors
+        if refl_res.status != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return refl_res.status
         # Start the experiment on the sender
         sender_res = grpc_client.startExperimentSender(
             channel=send_channel,
@@ -368,11 +454,17 @@ class SRv6Controller:
             delay_margin=delay_margin,
             number_of_color=number_of_color
         )
-        if sender_res is not None and \
-                sender_res.status == srv6pmCommons_pb2.STATUS_SUCCESS:
-            print("Started Measure Sender RES: %s" % sender_res.status)
-        else:
-            print("ERROR startExperimentSender  RES: %s" % sender_res)
+        # Pretty print status code
+        self.print_status_message(
+            status_code=sender_res.status,
+            success_msg='Started Measure Sender',
+            failure_msg='Error in startExperimentSender()'
+        )
+        # Check for errors
+        if sender_res.status != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return sender_res.status
+        # Success
+        return srv6pmCommons_pb2.STATUS_SUCCESS
 
     def get_measurement_results(self, sender, reflector,
                                 send_refl_sidlist, refl_send_sidlist):
@@ -387,10 +479,15 @@ class SRv6Controller:
             channel=send_channel,
             sidlist=send_refl_sidlist
         )
+        # Pretty print status code
+        self.print_status_message(
+            status_code=sender_res.status,
+            success_msg='Received Data Sender',
+            failure_msg='Error in retriveExperimentResultsSender()'
+        )
         # Collect the results
         res = None
-        if sender_res is not None:
-            print("Received Data Sender RES: %s" % sender_res.status)
+        if sender_res.status == srv6pmCommons_pb2.STATUS_SUCCESS:
             res = list()
             for data in sender_res.measurement_data:
                 res.append({
@@ -403,8 +500,7 @@ class SRv6Controller:
                     'reflector_tx_counter': data.reflector_tx_counter,
                     'reflector_rx_counter': data.reflector_rx_counter,
                 })
-        else:
-            print("ERROR retriveExperimentResultsSender RES: %s" % sender_res)
+        # Return the results
         return res
 
     def stop_measurement(self, sender, reflector,
@@ -415,25 +511,35 @@ class SRv6Controller:
         refl_channel = self.get_grpc_channel(reflector)
         print("\n************** Stop Measurement **************\n")
         # Stop the experiment on the sender
-        refl_res = grpc_client.stopExperimentSender(
+        sender_res = grpc_client.stopExperimentSender(
             channel=send_channel,
             sidlist=send_refl_sidlist
         )
-        if refl_res is not None and \
-                refl_res.status == srv6pmCommons_pb2.STATUS_SUCCESS:
-            print("Stopped Measure RES: %s" % refl_res.status)
-        else:
-            print("ERROR startExperimentSender RES: %s" % refl_res)
+        # Pretty print status code
+        self.print_status_message(
+            status_code=sender_res.status,
+            success_msg='Stopped Measure Sender',
+            failure_msg='Error in stopExperimentSender()'
+        )
+        # Check for errors
+        if sender_res.status != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return sender_res.status
         # Stop the experiment on the reflector
-        sender_res = grpc_client.stopExperimentReflector(
+        refl_res = grpc_client.stopExperimentReflector(
             channel=refl_channel,
             sidlist=refl_send_sidlist
         )
-        if sender_res is not None and \
-                sender_res.status == srv6pmCommons_pb2.STATUS_SUCCESS:
-            print("Stopped Measure RES: %s" % sender_res.status)
-        else:
-            print("ERROR startExperimentSender RES: %s" % sender_res)
+        # Pretty print status code
+        self.print_status_message(
+            status_code=refl_res.status,
+            success_msg='Stopped Measure Reflector',
+            failure_msg='Error in stopExperimentReflector()'
+        )
+        # Check for errors
+        if refl_res.status != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return refl_res.status
+        # Success
+        return srv6pmCommons_pb2.STATUS_SUCCESS
 
     def start_experiment(self, sender, reflector, send_refl_dest,
                          refl_send_dest, send_refl_sidlist, refl_send_sidlist,
@@ -519,7 +625,7 @@ class SRv6Controller:
             measure_id = self.measure_id
         # Create a bidirectional SRv6 tunnel between the sender and the
         # reflector
-        self.create_srv6_path(
+        res = self.create_srv6_path(
             node_l=sender,
             node_r=reflector,
             dest_lr=send_refl_dest,
@@ -529,8 +635,11 @@ class SRv6Controller:
             sidlist_lr=send_refl_sidlist,
             sidlist_rl=refl_send_sidlist
         )
+        # Check for errors
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
         # Start measurement process
-        self.start_measurement(
+        res = self.start_measurement(
             measure_id=measure_id,
             sender=sender,
             reflector=reflector,
@@ -554,6 +663,11 @@ class SRv6Controller:
             delay_margin=delay_margin,
             number_of_color=number_of_color
         )
+        # Check for errors
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
+        # Success
+        return srv6pmCommons_pb2.STATUS_SUCCESS
 
     def get_experiment_results(self, sender, reflector,
                                send_refl_sidlist, refl_send_sidlist):
@@ -573,14 +687,17 @@ class SRv6Controller:
         """Stop a running experiment."""
 
         # Stop the experiment
-        self.stop_measurement(
+        res = self.stop_measurement(
             sender=sender,
             reflector=reflector,
             send_refl_sidlist=send_refl_sidlist,
             refl_send_sidlist=refl_send_sidlist
         )
+        # Check for errors
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
         # Remove the SRv6 path
-        self.destroy_srv6_path(
+        res = self.destroy_srv6_path(
             node_l=sender,
             node_r=reflector,
             dest_lr=send_refl_dest,
@@ -588,6 +705,11 @@ class SRv6Controller:
             localseg_lr=send_refl_localseg,
             localseg_rl=refl_send_localseg
         )
+        # Check for errors
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
+        # Success
+        return srv6pmCommons_pb2.STATUS_SUCCESS
 
 
 # Parse options
