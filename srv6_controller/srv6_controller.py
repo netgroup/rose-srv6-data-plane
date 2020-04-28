@@ -567,9 +567,27 @@ class SRv6Controller:
             refl_send_sidlist=refl_send_sidlist
         )
 
-    def stop_experiment(self):
+    def stop_experiment(self, sender, reflector, send_refl_dest,
+                        refl_send_dest, send_refl_sidlist, refl_send_sidlist,
+                        send_refl_localseg=None, refl_send_localseg=None):
         """Stop a running experiment."""
-        raise NotImplementedError('Method not yet implemented')
+
+        # Stop the experiment
+        self.stop_measurement(
+            sender=sender,
+            reflector=reflector,
+            send_refl_sidlist=send_refl_sidlist,
+            refl_send_sidlist=refl_send_sidlist
+        )
+        # Remove the SRv6 path
+        self.destroy_srv6_path(
+            node_l=sender,
+            node_r=reflector,
+            dest_lr=send_refl_dest,
+            dest_rl=refl_send_dest,
+            localseg_lr=send_refl_localseg,
+            localseg_rl=refl_send_localseg
+        )
 
 
 # Parse options
