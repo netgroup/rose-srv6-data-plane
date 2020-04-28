@@ -20,6 +20,9 @@ import srv6pmReflector_pb2_grpc
 import srv6pmSender_pb2
 import srv6pmSender_pb2_grpc
 
+from srv6_manager import SRv6Manager
+import srv6_manager_pb2
+import srv6_manager_pb2_grpc
 
 class TestPacketReceiver(Thread):
     def __init__(self, interface, sender, reflector ):
@@ -140,31 +143,35 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
     def startExperimentSender(self, request, context):
         print("REQ - startExperiment")
         self.sender.startMeas(request.sdlist)
-        res = 1
-        return srv6pmSender_pb2.StartExperimentSenderReply(status=res)
+        status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+        return srv6pmSender_pb2.StartExperimentSenderReply(status=status)
 
     def stopExperimentSender(self, request, context):
         print("REQ - stopExperiment")
         self.sender.stopMeas(request.sdlist)
-        res = 1
-        return srv6pmCommons_pb2.StopExperimentReply(status=res)
+        status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+        return srv6pmCommons_pb2.StopExperimentReply(status=status)
 
     def startExperimentReflector(self, request, context):
         print("REQ - startExperiment")
         self.reflector.startMeas(request.sdlist)
-        return srv6pmReflector_pb2.StartExperimentReflectorReply(status=1)
+        status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+        return srv6pmReflector_pb2.StartExperimentReflectorReply(status=status)
 
     def stopExperimentReflector(self, request, context):
         print("REQ - stopExperiment")
         self.reflector.stopMeas(request.sdlist)
-        res = 1
-        return srv6pmCommons_pb2.StopExperimentReply(status=1)
+        status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+        return srv6pmCommons_pb2.StopExperimentReply(status=status)
 
     def retriveExperimentResults(self, request, context):
         print("REQ - retriveExperimentResults")
         res = self.sender.getMeas(request.sdlist)
-        res = 1
-        return srv6pmCommons_pb2.ExperimentDataResponse(status=res)
+        status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+        response = srv6pmCommons_pb2.ExperimentDataResponse(status=status)
+        data = response.measurement_data.add()
+        data.sender_tx_counter = res
+        return response
 
 
 def serve(ipaddr,gprcPort,recvInterf):
@@ -177,7 +184,9 @@ def serve(ipaddr,gprcPort,recvInterf):
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     srv6pmService_pb2_grpc.add_SRv6PMServicer_to_server(TWAMPController(sessionsender,sessionreflector), server)
-    server.add_insecure_port("{ip}:{port}".format(ip=ipaddr,port=gprcPort))
+    srv6_manager_pb2_grpc.add_SRv6ManagerServicer_to_server(
+        SRv6Manager(), server)
+    server.add_insecure_port("[{ip}]:{port}".format(ip=ipaddr,port=gprcPort))
     print("\n-------------- Start Demon --------------\n")
     server.start()
     server.wait_for_termination()
