@@ -89,6 +89,21 @@ class SRv6Controller:
         # Mapping IP address to gRPC channels
         self.grpc_channels = dict()
 
+    def get_grpc_channel(self, ip_address):
+        # Get the gRPC channel of the node
+        channel = None
+        if ip_address in self.grpc_channels:
+            # gRPC channel already opened, we can use it
+            channel = self.grpc_channels[ip_address]
+        else:
+            # Get a new gRPC channel for the node
+            channel = grpc_client.get_grpc_session(
+                ip_address, self.grpc_port, self.secure, self.certificate)
+            # Add channel to mapping
+            self.grpc_channels[ip_address] = channel
+        # Return the channel
+        return channel
+
     def _create_uni_srv6_path(self, ingress, egress,
                               destination, segments, localseg=None):
         """ Create a unidirectional SRv6 tunnel from <ingress> to <egress>
@@ -112,25 +127,9 @@ class SRv6Controller:
         """
 
         # Get the gRPC channel of the ingress node
-        if ingress in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            ingress_channel = self.grpc_channels[ingress]
-        else:
-            # Get a new gRPC channel for the ingress node
-            ingress_channel = grpc_client.get_grpc_session(
-                ingress, self.grpc_port, self.secure, self.certificate)
-            # Add ingress channel to mapping
-            self.grpc_channels[ingress] = ingress_channel
+        ingress_channel = self.get_grpc_channel(ingress)
         # Get the gRPC channel of the egress node
-        if egress in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            egress_channel = self.grpc_channels[egress]
-        else:
-            # Get a new gRPC channel for the egress node
-            egress_channel = grpc_client.get_grpc_session(
-                egress, self.grpc_port, self.secure, self.certificate)
-            # Add egress channel to mapping
-            self.grpc_channels[egress] = egress_channel
+        egress_channel = self.get_grpc_channel(egress)
         # Add seg6 route to <ingress> to steer the packets sent to the
         # <destination> through the SID list <segments>
         #
@@ -235,25 +234,9 @@ class SRv6Controller:
         """
 
         # Get the gRPC channel of the ingress node
-        if ingress in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            ingress_channel = self.grpc_channels[ingress]
-        else:
-            # Get a new gRPC channel for the ingress node
-            ingress_channel = grpc_client.get_grpc_session(
-                ingress, self.grpc_port, self.secure, self.certificate)
-            # Add ingress channel to mapping
-            self.grpc_channels[ingress] = ingress_channel
+        ingress_channel = self.get_grpc_channel(ingress)
         # Get the gRPC channel of the egress node
-        if egress in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            egress_channel = self.grpc_channels[egress]
-        else:
-            # Get a new gRPC channel for the egress node
-            egress_channel = grpc_client.get_grpc_session(
-                egress, self.grpc_port, self.secure, self.certificate)
-            # Add egress channel to mapping
-            self.grpc_channels[egress] = egress_channel
+        egress_channel = self.get_grpc_channel(egress)
         # Remove seg6 route from <ingress> to steer the packets sent to
         # <destination> through the SID list <segments>
         #
@@ -337,27 +320,12 @@ class SRv6Controller:
                           timestamp_format, delay_measurement_mode,
                           padding_mbz, loss_measurement_mode,
                           interval_duration, delay_margin, number_of_color):
+
         # Get the gRPC channel of the sender
-        if sender in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            send_channel = self.grpc_channels[sender]
-        else:
-            # Get a new gRPC channel for the sender
-            send_channel = grpc_client.get_grpc_session(
-                sender, self.grpc_port, self.secure, self.certificate)
-            # Add sender channel to mapping
-            self.grpc_channels[sender] = send_channel
+        send_channel = self.get_grpc_channel(sender)
         # Get the gRPC channel of the reflector
-        if reflector in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            refl_channel = self.grpc_channels[reflector]
-        else:
-            # Get a new gRPC channel for the reflector
-            refl_channel = grpc_client.get_grpc_session(
-                reflector, self.grpc_port, self.secure, self.certificate)
-            # Add reflector channel to mapping
-            self.grpc_channels[reflector] = refl_channel
-        print("\n-------------- Start Measurement --------------\n")
+        refl_channel = self.get_grpc_channel(reflector)
+        print("\n************** Start Measurement **************\n")
         # Start the experiment on the reflector
         refl_res = grpc_client.startExperimentReflector(
             channel=refl_channel,
@@ -409,71 +377,43 @@ class SRv6Controller:
     def get_measurement_results(self, sender, reflector,
                                 send_refl_sidlist, refl_send_sidlist):
         # Get the gRPC channel of the sender
-        if sender in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            send_channel = self.grpc_channels[sender]
-        else:
-            # Get a new gRPC channel for the sender
-            send_channel = grpc_client.get_grpc_session(
-                sender, self.grpc_port, self.secure, self.certificate)
-            # Add sender channel to mapping
-            self.grpc_channels[sender] = send_channel
+        send_channel = self.get_grpc_channel(sender)
         # Get the gRPC channel of the reflector
-        if reflector in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            refl_channel = self.grpc_channels[reflector]
-        else:
-            # Get a new gRPC channel for the reflector
-            refl_channel = grpc_client.get_grpc_session(
-                reflector, self.grpc_port, self.secure, self.certificate)
-            # Add reflector channel to mapping
-            self.grpc_channels[reflector] = refl_channel
+        refl_channel = self.get_grpc_channel(reflector)
         # Retrieve the results of the experiment
-        print("\n-------------- Get Measurement Data --------------\n")
+        print("\n************** Get Measurement Data **************\n")
         # Retrieve the results from the sender
         sender_res = grpc_client.retriveExperimentResultsSender(
             channel=send_channel,
             sidlist=send_refl_sidlist
         )
+        # Collect the results
+        res = None
         if sender_res is not None:
             print("Received Data Sender RES: %s" % sender_res.status)
+            res = list()
             for data in sender_res.measurement_data:
-                print("Measurement ID: %s" % data.measure_id)
-                print("Interval: %s" % data.interval)
-                print("Timestamp: %s" % data.timestamp)
-                print("Color: %s" % data.color)
-                print("Sender TX counter: %s" % data.sender_tx_counter)
-                print("Sender RX counter: %s" % data.sender_rx_counter)
-                print("Reflector TX counter: %s" % data.reflector_tx_counter)
-                print("Reflector RX counter: %s" % data.reflector_rx_counter)
-                print()
-                print()
+                res.append({
+                    'measure_id': data.measure_id,
+                    'interval': data.interval,
+                    'timestamp': data.timestamp,
+                    'color': data.color,
+                    'sender_tx_counter': data.sender_tx_counter,
+                    'sender_rx_counter': data.sender_rx_counter,
+                    'reflector_tx_counter': data.reflector_tx_counter,
+                    'reflector_rx_counter': data.reflector_rx_counter,
+                })
         else:
             print("ERROR retriveExperimentResultsSender RES: %s" % sender_res)
+        return res
 
     def stop_measurement(self, sender, reflector,
                          send_refl_sidlist, refl_send_sidlist):
         # Get the gRPC channel of the sender
-        if sender in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            send_channel = self.grpc_channels[sender]
-        else:
-            # Get a new gRPC channel for the sender
-            send_channel = grpc_client.get_grpc_session(
-                sender, self.grpc_port, self.secure, self.certificate)
-            # Add sender channel to mapping
-            self.grpc_channels[sender] = send_channel
+        send_channel = self.get_grpc_channel(sender)
         # Get the gRPC channel of the reflector
-        if reflector in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            refl_channel = self.grpc_channels[reflector]
-        else:
-            # Get a new gRPC channel for the reflector
-            refl_channel = grpc_client.get_grpc_session(
-                reflector, self.grpc_port, self.secure, self.certificate)
-            # Add reflector channel to mapping
-            self.grpc_channels[reflector] = refl_channel
-        print("\n-------------- Stop Measurement --------------\n")
+        refl_channel = self.get_grpc_channel(reflector)
+        print("\n************** Stop Measurement **************\n")
         # Stop the experiment on the sender
         refl_res = grpc_client.stopExperimentSender(
             channel=send_channel,
@@ -573,26 +513,6 @@ class SRv6Controller:
             End.DT6 route is not created.
         """
 
-        # Get the gRPC channel of the sender
-        if sender in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            send_channel = self.grpc_channels[sender]
-        else:
-            # Get a new gRPC channel for the sender
-            send_channel = grpc_client.get_grpc_session(
-                sender, self.grpc_port, self.secure, self.certificate)
-            # Add sender channel to mapping
-            self.grpc_channels[sender] = send_channel
-        # Get the gRPC channel of the reflector
-        if reflector in self.grpc_channels:
-            # gRPC channel already opened, we can use it
-            refl_channel = self.grpc_channels[reflector]
-        else:
-            # Get a new gRPC channel for the reflector
-            refl_channel = grpc_client.get_grpc_session(
-                reflector, self.grpc_port, self.secure, self.certificate)
-            # Add reflector channel to mapping
-            self.grpc_channels[reflector] = refl_channel
         # Get a new measure ID, if it isn't passed in as argument
         if measure_id is None:
             self.measure_id += 1
@@ -638,8 +558,9 @@ class SRv6Controller:
     def get_experiment_results(self, sender, reflector,
                                send_refl_sidlist, refl_send_sidlist):
         """Get the results of an experiment."""
+
         # Get the results
-        self.get_measurement_results(
+        return self.get_measurement_results(
             sender=sender,
             reflector=reflector,
             send_refl_sidlist=send_refl_sidlist,
