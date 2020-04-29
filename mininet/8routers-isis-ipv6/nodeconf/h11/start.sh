@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 BASE_DIR=/home/user/Progetto/1920-srv6-tutorial/nets/8routers-isis-ipv6/nodeconf
 NODE_NAME=h11

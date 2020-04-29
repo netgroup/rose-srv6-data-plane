@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 BASE_DIR=nodeconf
 NODE_NAME=r2
