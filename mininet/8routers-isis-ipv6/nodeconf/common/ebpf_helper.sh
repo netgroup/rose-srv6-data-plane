@@ -21,6 +21,16 @@ readonly EX_PROTOCOL=76		# /* remote error in protocol */
 readonly EX_NOPERM=77		# /* permission denied */
 readonly EX_CONFIG=78		# /* configuration error */
 
+if [ -n "${CDIR+x}" ]; then
+	readonly export EBPF_CLI="${CDIR}/ebpf_py_cli.py"
+else
+	# Stand-alone
+	__HELPER_DIR="$(dirname -- $(readlink -f -- "${BASH_SOURCE}"))"
+	readonly export EBPF_CLI="${__HELPER_DIR}/ebpf_py_cli.py"
+fi
+
+[ ! -f "${EBPF_CLI}" ] && exit 1
+
 # retrieves the ip addresses set on a given interface
 # NOTE: do not move ipv6 link-local addresses
 function get_ip_addr()
@@ -200,6 +210,107 @@ function clean_daemon_conf()
 		# we remove the file
 		rm "${cfg_ebpf}" || return $?
 	fi
+
+	return 0
+}
+
+function xdp_pfplm_load()
+{
+	local direction="$2"
+	local ifname="$1"
+	local ifname_dir
+
+	ifname_dir="${ifname}_${direction}"
+
+	"${EBPF_CLI}" load "${ifname_dir}" "${direction}" || return $?
+
+	return 0
+}
+
+function xdp_pfplm_unload()
+{
+	local direction="$2"
+	local ifname="$1"
+	local ifname_dir
+
+	ifname_dir="${ifname}_${direction}"
+
+	"${EBPF_CLI}" unload "${ifname_dir}" || return $?
+
+	return 0
+}
+
+function xdp_pfplm_set_color()
+{
+	local ifname="$1"
+	local ifname_egr
+	local color="$2"
+
+	# change color makes sense only for the egress path
+	ifname_egr="${ifname}_egr"
+
+	"${EBPF_CLI}" set_color "${ifname_egr}" "${color}" || return $?
+
+	return 0
+}
+
+function xdp_pfplm_get_color()
+{
+	local ifname="$1"
+	local ifname_egr
+	local color
+
+	# change color makes sense only for the egress path
+	ifname_egr="${ifname}_egr"
+
+	color="$("${EBPF_CLI}" get_color "${ifname_egr}")" || return $?
+	echo ${color}
+
+	return 0
+}
+
+function xdp_pfplm_add_flow()
+{
+	local direction"=$2"
+	local ifname="$1"
+	local ifname_dir
+	local segs="$3"
+
+	ifname_dir="${ifname}_${direction}"
+
+	"${EBPF_CLI}" add_flow "${ifname_dir}" "${segs}" || return $?
+
+	return 0
+}
+
+function xdp_pfplm_del_flow()
+{
+	local direction"=$2"
+	local ifname="$1"
+	local ifname_dir
+	local segs="$3"
+
+	ifname_dir="${ifname}_${direction}"
+
+	"${EBPF_CLI}" del_flow "${ifname_dir}" "${segs}" || return $?
+
+	return 0
+}
+
+function xdp_pfplm_get_flow_stats()
+{
+	local direction"=$2"
+	local ifname="$1"
+	local ifname_dir
+	local color="$4"
+	local segs="$3"
+	local pkts
+
+	ifname_dir="${ifname}_${direction}"
+
+	pkts="$("${EBPF_CLI}" get_flow_stats \
+		"${ifname_dir}" "${segs}" "${color}")" || return $?
+	echo "${pkts}"
 
 	return 0
 }
