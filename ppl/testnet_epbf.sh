@@ -102,6 +102,87 @@ create_first_NS(){
 	echo "Setting-up NS1 done\n"
 }
 
+create_encap_NS(){
+	echo "Setting-up ENCAP - NS$1" 
+	NSX=NS$1
+	
+	PREV_IFACE_N=$(((($1 - 1) * 2) - 1))
+	NEXT_IFACE_N=$(($1 * 2))
+	
+	LEFT_IFACE_N=$((($1 - 1) * 2))
+	RIGHT_IFACE_N=$((($1 * 2) - 1))
+	
+	LEFT_IFACE=veth$LEFT_IFACE_N
+	RIGHT_IFACE=veth$RIGHT_IFACE_N
+	
+	NEXT_IFACE=veth$NEXT_IFACE_N
+
+	EPBF_BRIDGE=br$1
+	EPBF_IGR_IFACE=veth${RIGHT_IFACE_N}_igr
+	EPBF_EGR_IFACE=veth${RIGHT_IFACE_N}_egr
+
+	echo "Creating the virtual interfaces: $RIGHT_IFACE and $NEXT_IFACE"
+	sudo ip link add $RIGHT_IFACE type veth peer name $NEXT_IFACE
+
+	echo "Creating the virtual interfaces: $EPBF_IGR_IFACE and $EPBF_EGR_IFACE"
+	sudo ip link add $EPBF_IGR_IFACE type veth peer name $EPBF_EGR_IFACE
+    
+	echo "Creating the $NSX"
+	sudo ip netns add $NSX
+	
+	echo "Adding virtual interface to $NSX"
+	sudo ip link set $LEFT_IFACE netns $NSX
+	sudo ip link set $RIGHT_IFACE netns $NSX
+
+    echo "Adding virtual interface EPBF to $NSX"
+	sudo ip link set $EPBF_IGR_IFACE netns $NSX
+	sudo ip link set $EPBF_EGR_IFACE netns $NSX
+
+    echo "Adding Bridge for EPBF to $NSX"
+    sudo ip netns exec $NSX ip link add name $EPBF_BRIDGE type bridge
+
+	echo "Enabling interfaces for $NSX"
+	sudo ip netns exec $NSX ip link set dev $EPBF_BRIDGE up
+	sudo ip netns exec $NSX ip link set dev $LEFT_IFACE up
+	sudo ip netns exec $NSX ip link set dev $RIGHT_IFACE up
+	sudo ip netns exec $NSX ip link set dev $EPBF_IGR_IFACE up
+	sudo ip netns exec $NSX ip link set dev $EPBF_EGR_IFACE up
+
+    echo "Connect interfaces to Bridge"
+    sudo ip netns exec $NSX ip link set $EPBF_EGR_IFACE master $EPBF_BRIDGE
+	sudo ip netns exec $NSX ip link set $RIGHT_IFACE master $EPBF_BRIDGE
+
+	
+	echo "Adding addresses and routes to $NSX"
+	sudo ip netns exec $NSX ip -6 addr add fcf0:0000:000$(($1 - 1)):000$(($1))::02/64 dev $LEFT_IFACE #scope link
+	sudo ip netns exec $NSX ip -6 addr add fcf0:0000:000$(($1)):000$(($1 + 1))::01/64 dev $EPBF_IGR_IFACE #per epbf
+    
+	echo "Adding loopback interface to $NSX"
+	sudo ip netns exec $NSX ip link set dev lo up
+	
+	echo "Adding loopback address to $NSX"
+	sudo ip netns exec $NSX ip -6 addr add fcff:000$(($1))::1 dev lo
+	
+	echo "Enabling forwarding"
+	sudo ip netns exec $NSX sysctl net.ipv6.conf.all.forwarding=1 > /dev/null
+	sudo ip netns exec $NSX sysctl net.ipv4.conf.all.forwarding=1 > /dev/null
+	
+	echo "Enabling SRV6"
+	sudo ip netns exec $NSX sysctl net.ipv6.conf.all.seg6_enabled=1 > /dev/null
+	sudo ip netns exec $NSX sysctl net.ipv6.conf.lo.seg6_enabled=1 > /dev/null
+	sudo ip netns exec $NSX sysctl net.ipv6.conf.$LEFT_IFACE.seg6_enabled=1 > /dev/null
+	sudo ip netns exec $NSX sysctl net.ipv6.conf.$RIGHT_IFACE.seg6_enabled=1 > /dev/null
+	sudo ip netns exec $NSX sysctl net.ipv6.conf.$EPBF_IGR_IFACE.seg6_enabled=1 > /dev/null
+	
+	echo "Adding next host route"
+	sudo ip netns exec $NSX ip -6 route add fcff:000$(($1 + 1))::/32 via fcf0:0000:000$(($1)):000$(($1 + 1))::02 #dev $RIGHT_IFACE via fb$(($1))0::02
+	
+	echo "Adding previous host route"
+	sudo ip netns exec $NSX ip -6 route add fcff:000$(($1 - 1))::/32 via fcf0:0000:000$(($1 - 1)):000$(($1))::01 #dev $LEFT_IFACE via fb$(($1 - 1))0::01
+	
+	echo "Setting-up $NSX done\n"
+}
+
 # $1 = namespace number
 create_NS(){
 	echo "Setting-up NS$1"
@@ -303,12 +384,17 @@ tmux kill-session -t $TMUXSN 2>/dev/null
 
 create_first_NS
 
-for i in $(seq 2 $(($NAMESPACES - 1 )))
+create_encap_NS 2
+
+for i in $(seq 3 $(($NAMESPACES - 1 )))
 do
 	create_NS $i
 done
 
+#create_decap_NS $NAMESPACES-1
+
 create_last_NS $NAMESPACES
+
 
 # Creating segments
 SEGS_1=""
@@ -514,48 +600,48 @@ sudo ip netns add CTRL
 
 
 echo "Creating the virtual interface ctrl0 connected to ctrl1 e ctrl2"
-sudo ip link add ctrl0 type veth peer name br-ctrl0
-sudo ip link add ctrl1 type veth peer name br-ctrl1
-sudo ip link add ctrl2 type veth peer name br-ctrl2
+#sudo ip link add ctrl0 type veth peer name br-ctrl0
+#sudo ip link add ctrl1 type veth peer name br-ctrl1
+#sudo ip link add ctrl2 type veth peer name br-ctrl2
 	
 echo "Adding virtual interface to CTRL NS2 and NS(N-1)"
-sudo ip link set ctrl0 netns CTRL
-sudo ip link set ctrl1 netns NS2
-sudo ip link set ctrl2 netns NS$(($NAMESPACES - 1))
+#sudo ip link set ctrl0 netns CTRL
+#sudo ip link set ctrl1 netns NS2
+#sudo ip link set ctrl2 netns NS$(($NAMESPACES - 1))
 
 echo "Set Up bridge"
-sudo ip link add name br1 type bridge
-sudo ip link set br1 up
+#sudo ip link add name br0 type bridge
+#sudo ip link set br0 up
 
 
-sudo ip link set br-ctrl0 up
-sudo ip link set br-ctrl1 up
-sudo ip link set br-ctrl2 up
+#sudo ip link set br-ctrl0 up
+#sudo ip link set br-ctrl1 up
+#sudo ip link set br-ctrl2 up
 
 
-sudo ip link set br-ctrl0 master br1
-sudo ip link set br-ctrl1 master br1
-sudo ip link set br-ctrl2 master br1
+#sudo ip link set br-ctrl0 master br0
+#sudo ip link set br-ctrl1 master br0
+#sudo ip link set br-ctrl2 master br0
 	
 	
 echo "Enabling interfaces"
-sudo ip netns exec CTRL ip link set dev ctrl0 up
-sudo ip netns exec NS2 ip link set dev ctrl1 up
-sudo ip netns exec NS$(($NAMESPACES - 1)) ip link set dev ctrl2 up
+#sudo ip netns exec CTRL ip link set dev ctrl0 up
+#sudo ip netns exec NS2 ip link set dev ctrl1 up
+#sudo ip netns exec NS$(($NAMESPACES - 1)) ip link set dev ctrl2 up
 	
 	
 echo "Adding addresses and routes"
-sudo ip netns exec CTRL ip addr add 10.1.1.200/24 dev ctrl0
-sudo ip netns exec NS2 ip addr add 10.1.1.1/24 dev ctrl1
-sudo ip netns exec NS$(($NAMESPACES - 1)) ip addr add 10.1.1.2/24 dev ctrl2
+#sudo ip netns exec CTRL ip addr add 10.1.1.200/24 dev ctrl0
+#sudo ip netns exec NS2 ip addr add 10.1.1.1/24 dev ctrl1
+#sudo ip netns exec NS$(($NAMESPACES - 1)) ip addr add 10.1.1.2/24 dev ctrl2
 
 	
 	
 echo "Adding loopback interface to CTRL"
-sudo ip netns exec CTRL ip link set dev lo up
+#sudo ip netns exec CTRL ip link set dev lo up
 	
 echo "Adding loopback address to CTRL"
-sudo ip netns exec CTRL ip addr add 127.0.0.1 dev lo
+#sudo ip netns exec CTRL ip addr add 127.0.0.1 dev lo
 
 
 
