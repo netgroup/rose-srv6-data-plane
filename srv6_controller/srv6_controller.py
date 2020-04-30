@@ -72,6 +72,15 @@ class SRv6Controller:
                      number_of_color, measure_id=None, send_localseg=None,
                      refl_localseg=None)
         Start an experiment
+
+    get_experiment_results(sender, reflector,
+                           send_refl_sidlist, refl_send_sidlist)
+        Get the results of a running experiment
+
+    stop_experiment(sender, reflector, send_refl_dest,
+                    refl_send_dest, send_refl_sidlist, refl_send_sidlist,
+                    send_refl_localseg=None, refl_send_localseg=None)
+        Stop a running experiment
     """
 
     def __init__(self, grpc_port, secure=False, certificate=None, debug=False):
