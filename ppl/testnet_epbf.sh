@@ -64,6 +64,67 @@ cleanup(){
 	echo "Cleanup done\n"
 }
 
+create_controller(){
+	echo "Setting-up CTRL namespace"
+
+	# ADDING THE CONTROLLER AND RELATIVE INTERFACES
+	echo "\nSetting-up The controller"
+	
+	echo "Creating the Controller Namespace"
+	sudo ip netns add CTRL
+	
+	
+	echo "Creating the virtual interfaces veth-c{0:2} connected respectively to br-veth-c{0:2}"
+	sudo ip link add veth-c0 type veth peer name br-veth-c0
+	sudo ip link add veth-c1 type veth peer name br-veth-c1
+	sudo ip link add veth-c2 type veth peer name br-veth-c2
+		
+	echo "Adding virtual interfaces veth-c{0:2} to CTRL, NS2 and NS(N-1) respectively"
+	sudo ip link set veth-c0 netns CTRL
+	sudo ip link set veth-c1 netns NS2
+	sudo ip link set veth-c2 netns NS$(($NAMESPACES - 1))
+	
+	#NB: attached to the "real" machine. Should I move them?
+	echo "Set up controller bridge"
+	sudo ip link add name br-ctrl type bridge
+	sudo ip link set br-ctrl up
+	
+	#NB: attached to the "real" machine. Should I move them?
+	echo "Enabling bridge interfaces"
+	sudo ip link set br-veth-c0 up
+	sudo ip link set br-veth-c1 up
+	sudo ip link set br-veth-c2 up
+
+	sudo ip netns exec CTRL ip link set dev br-veth-c0 up
+	sudo ip netns exec CTRL ip link set dev br-veth-c1 up
+	sudo ip netns exec CTRL ip link set dev br-veth-c2 up
+
+		
+	echo "Connecting br-veth-c{0:2} interfaces to the bridge"
+	sudo ip link set br-veth-c0 master br-ctrl
+	sudo ip link set br-veth-c1 master br-ctrl
+	sudo ip link set br-veth-c2 master br-ctrl
+		
+		
+	echo "Enabling interfaces veth-c{0:2}"
+	sudo ip netns exec CTRL ip link set dev veth-c0 up
+	sudo ip netns exec NS2 ip link set dev veth-c1 up
+	sudo ip netns exec NS$(($NAMESPACES - 1)) ip link set dev veth-c2 up
+		
+		
+	echo "Adding addresses and routes to CTRL net"
+	sudo ip netns exec CTRL ip addr add 10.1.1.100/24 dev veth-c0
+	sudo ip netns exec NS2 ip addr add 10.1.1.1/24 dev veth-c1
+	sudo ip netns exec NS$(($NAMESPACES - 1)) ip addr add 10.1.1.2/24 dev veth-c2
+	
+		
+	echo "Adding loopback interface to CTRL"
+	sudo ip netns exec CTRL ip link set dev lo up
+		
+	echo "Adding loopback address to CTRL"
+	sudo ip netns exec CTRL ip addr add 127.0.0.1 dev lo
+	
+}
 
 
 create_first_NS(){
@@ -102,6 +163,7 @@ create_first_NS(){
 	echo "Setting-up NS1 done\n"
 }
 
+# $1 = namespace number
 create_encap_NS(){
 	echo "Setting-up ENCAP - NS$1" 
 	NSX=NS$1
@@ -118,8 +180,8 @@ create_encap_NS(){
 	NEXT_IFACE=veth$NEXT_IFACE_N
 
 	EPBF_BRIDGE=br$1
-	EPBF_IGR_IFACE=veth${RIGHT_IFACE_N}_igr
-	EPBF_EGR_IFACE=veth${RIGHT_IFACE_N}_egr
+	EPBF_IGR_IFACE=veth${RIGHT_IFACE_N}-igr
+	EPBF_EGR_IFACE=veth${RIGHT_IFACE_N}-egr
 
 	echo "Creating the virtual interfaces: $RIGHT_IFACE and $NEXT_IFACE"
 	sudo ip link add $RIGHT_IFACE type veth peer name $NEXT_IFACE
@@ -246,7 +308,6 @@ create_NS(){
 }
 
 
-
 # $1 = namespace number
 create_last_NS(){
 	echo "Setting-up NS$1"
@@ -300,6 +361,7 @@ create_last_NS(){
 	echo "Setting-up $NSX done\n"
 }
 
+
 create_tmpfile_namespace(){
 	TMPFILE=$(mktemp)
 
@@ -334,18 +396,14 @@ read -r -d '' ebpf_env <<-'EOF'
 	/bin/bash
 EOF
 
-    tmux new-session -d -s $TMUXSN -n NS1 ip netns exec NS1 bash 
-    for i in $(seq 2 $1)
+    tmux new-session -d -s $TMUXSN -n CTRL ip netns exec CTRL bash -c "${ebpf_env}"
+    for i in $(seq 1 $1)
     do
         tmux new-window -t $TMUXSN -n NS$i ip netns exec NS$i bash -c "${ebpf_env}"
     done
-
-    tmux new-window -t $TMUXSN -n CTRL ip netns exec CTRL bash
-    
-    #tmux send-keys -t NS3 "wireshark & " C-m
-    #tmux send-keys -t NS2 "wireshark & " C-m
-    
-    #start iperf session
+        
+    #load python venv 
+    tmux send-keys -t CTRL "source venv/bin/activate" C-m
     tmux send-keys -t NS2 "source venv/bin/activate" C-m
     tmux send-keys -t NS$(($NAMESPACES-1)) "source venv/bin/activate" C-m 
     
@@ -358,9 +416,9 @@ EOF
 	
     
     #start iperf session
-    #tmux send-keys -t NS$(($NAMESPACES)) "iperf3 -s -B fcff:$(($NAMESPACES))::1" C-m
+    tmux send-keys -t NS$(($NAMESPACES)) "iperf3 -s -B fcff:$(($NAMESPACES))::1" C-m
     sleep 1
-    #tmux send-keys -t NS1 "iperf3 -6 -B fcff:1::1 -M 1000 -c fcff:$(($NAMESPACES))::1 -b 10M -t 3000" C-m
+    tmux send-keys -t NS1 "iperf3 -6 -B fcff:1::1 -M 1000 -c fcff:$(($NAMESPACES))::1 -b 10M -t 3000" C-m
     
     
     
@@ -376,11 +434,13 @@ EOF
 
 
 
-
 cleanup $NAMESPACES
 
 # Kill tmux previous session
 tmux kill-session -t $TMUXSN 2>/dev/null
+
+
+
 
 create_first_NS
 
@@ -395,6 +455,7 @@ done
 
 create_last_NS $NAMESPACES
 
+create_controller
 
 # Creating segments
 SEGS_1=""
@@ -508,7 +569,7 @@ ip netns exec NS2 $IP6TABLES -A blue-in -t mangle \
 	-m set --match-set blue-ht-in dst -j TOS --set-tos 0x00
 
 # This sends packets directly to nfqueue
-ip netns exec NS2 ip6tables -A INPUT -d fcff:2::1/128 -p udp --dport 1215 --sport 1216 -j NFQUEUE --queue-num 1
+#ip netns exec NS2 ip6tables -A INPUT -d fcff:2::1/128 -p udp --dport 1215 --sport 1216 -j NFQUEUE --queue-num 1
 
 
 
@@ -589,74 +650,33 @@ ip netns exec NS$(($NAMESPACES - 1)) $IP6TABLES -A blue-in -t mangle \
 	-m set --match-set blue-ht-in dst -j TOS --set-tos 0x00
 
 # This sends packets directly to nfqueue
-ip netns exec NS$(($NAMESPACES - 1)) ip6tables -A INPUT -d fcff:$(($NAMESPACES - 1))::1/128 -p udp --dport 1205 --sport 1206 -j NFQUEUE --queue-num 1
-
-
-# ADDING THE CONTROLLER AND RELATIVE INTERFACES
-echo "\nSetting-up The controller"
-
-echo "Creating the Controller Namespace"
-sudo ip netns add CTRL
-
-
-echo "Creating the virtual interface ctrl0 connected to ctrl1 e ctrl2"
-#sudo ip link add ctrl0 type veth peer name br-ctrl0
-#sudo ip link add ctrl1 type veth peer name br-ctrl1
-#sudo ip link add ctrl2 type veth peer name br-ctrl2
-	
-echo "Adding virtual interface to CTRL NS2 and NS(N-1)"
-#sudo ip link set ctrl0 netns CTRL
-#sudo ip link set ctrl1 netns NS2
-#sudo ip link set ctrl2 netns NS$(($NAMESPACES - 1))
-
-echo "Set Up bridge"
-#sudo ip link add name br0 type bridge
-#sudo ip link set br0 up
-
-
-#sudo ip link set br-ctrl0 up
-#sudo ip link set br-ctrl1 up
-#sudo ip link set br-ctrl2 up
-
-
-#sudo ip link set br-ctrl0 master br0
-#sudo ip link set br-ctrl1 master br0
-#sudo ip link set br-ctrl2 master br0
-	
-	
-echo "Enabling interfaces"
-#sudo ip netns exec CTRL ip link set dev ctrl0 up
-#sudo ip netns exec NS2 ip link set dev ctrl1 up
-#sudo ip netns exec NS$(($NAMESPACES - 1)) ip link set dev ctrl2 up
-	
-	
-echo "Adding addresses and routes"
-#sudo ip netns exec CTRL ip addr add 10.1.1.200/24 dev ctrl0
-#sudo ip netns exec NS2 ip addr add 10.1.1.1/24 dev ctrl1
-#sudo ip netns exec NS$(($NAMESPACES - 1)) ip addr add 10.1.1.2/24 dev ctrl2
-
-	
-	
-echo "Adding loopback interface to CTRL"
-#sudo ip netns exec CTRL ip link set dev lo up
-	
-echo "Adding loopback address to CTRL"
-#sudo ip netns exec CTRL ip addr add 127.0.0.1 dev lo
+#ip netns exec NS$(($NAMESPACES - 1)) ip6tables -A INPUT -d fcff:$(($NAMESPACES - 1))::1/128 -p udp --dport 1205 --sport 1206 -j NFQUEUE --queue-num 1
 
 
 
+echo "Adding Punt to NS2"
 
+sudo ip link add veth-punt1 type veth peer name dum-punt1
+sudo ip link set veth-punt1 netns NS2
+sudo ip link set dum-punt1 netns NS2
+sudo ip netns exec NS2 ip link set dev veth-punt1 up
+sudo ip netns exec NS2 ip link set dev dum-punt1 up
+sudo ip netns exec NS2 ip -6 route add fcff:2::100 encap seg6local action End.OP oif veth-punt1 dev veth-punt1
+
+echo "Adding Punt to NS$(($NAMESPACES - 1))"
+sudo ip link add veth-punt2 type veth peer name dum-punt2
+sudo ip link set veth-punt2 netns NS$(($NAMESPACES - 1))
+sudo ip link set dum-punt2 netns NS$(($NAMESPACES - 1))
+sudo ip netns exec NS$(($NAMESPACES - 1)) ip link set dev veth-punt2 up
+sudo ip netns exec NS$(($NAMESPACES - 1)) ip link set dev dum-punt2 up
+sudo ip netns exec NS$(($NAMESPACES - 1)) ip -6 route add fcff:$(($NAMESPACES - 1))::100 encap seg6local action End.OP oif veth-punt2 dev veth-punt2
 
 
 
 ######################################
 
 echo "Starting terminals..."
-#gnome-terminal -e 'sh -c "echo test; sleep 10"'
 sleep 2
-
-
-
 
 create_tmux_space $NAMESPACES
 

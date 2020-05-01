@@ -347,8 +347,6 @@ sudo ip netns exec NS$(($NAMESPACES - 1)) ip -6 route add fcf0:0000:0001:0002::1
 
 
 
-
-
 ######################################### IPSET COUNTERS
 echo "Adding counter to NS2"
 # IPSET simple configuration
@@ -423,8 +421,6 @@ ip netns exec NS2 $IP6TABLES -A blue-in -t mangle \
 
 # This sends packets directly to nfqueue
 ip netns exec NS2 ip6tables -A INPUT -d fcff:2::1/128 -p udp --dport 1215 --sport 1216 -j NFQUEUE --queue-num 1
-
-
 
 
 
@@ -506,6 +502,7 @@ ip netns exec NS$(($NAMESPACES - 1)) $IP6TABLES -A blue-in -t mangle \
 ip netns exec NS$(($NAMESPACES - 1)) ip6tables -A INPUT -d fcff:$(($NAMESPACES - 1))::1/128 -p udp --dport 1205 --sport 1206 -j NFQUEUE --queue-num 1
 
 
+
 # ADDING THE CONTROLLER AND RELATIVE INTERFACES
 echo "\nSetting-up The controller"
 
@@ -557,9 +554,8 @@ sudo ip netns exec CTRL ip link set dev lo up
 echo "Adding loopback address to CTRL"
 sudo ip netns exec CTRL ip addr add 127.0.0.1 dev lo
 
-
-
-
+#punt su NS-1
+sudo ip netns exec NS$(($NAMESPACES - 1)) ip -6 route add fcff:5::100 encap seg6local action End.OP oif ctrl2 dev ctrl2
 
 
 
