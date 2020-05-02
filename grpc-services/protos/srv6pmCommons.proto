@@ -13,20 +13,21 @@ message StopExperimentRequest {
 
 message RetriveExperimentDataRequest {
     string sdlist = 1;
+}
+
+message ExperimentDataResponse {
+    StatusCode status = 1;
     string meas_id = 2;
     // forward path
     uint64 ssSeqNum = 3;
     uint64 ssTxCounter = 4; 
     uint64 rfRxCounter = 5;
+    uint32 fwColor = 6;
     // reverse path
-    uint64 rfSeqNum = 6;
-    uint64 rfTxCounter = 7; 
-    uint64 ssRxCounter = 8; 
-}
-
-message ExperimentDataResponse {
-    StatusCode status = 1;
-
+    uint64 rfSeqNum = 7;
+    uint64 rfTxCounter = 8; 
+    uint64 ssRxCounter = 9; 
+    uint32 rvColor = 10;
 }
 
 message StopExperimentReply {

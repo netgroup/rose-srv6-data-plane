@@ -5,7 +5,7 @@ import sys
 import os
 import time
 from datetime import datetime, timedelta
-
+import pprint
 
 import srv6pmReflector_pb2
 import srv6pmReflector_pb2_grpc
@@ -61,7 +61,7 @@ def test_meas():
             print ("ERROR startExperimentSender  RES:"+sender_res)
 
         time.sleep(8)
-        for i in range(3):
+        for i in range(6):
             time.sleep(15)
             print("\n-------------- get Meas Data --------------\n",datetime)
             sender_res = retriveExperimentResultsSender(stub)
@@ -85,6 +85,8 @@ def test_meas_2():
         sender = srv6pmService_pb2_grpc.SRv6PMStub(channel1)
         reflector = srv6pmService_pb2_grpc.SRv6PMStub(channel2)
 
+        time.sleep(10)
+
         print("\n-------------- startMeas --------------\n")
         sender_res = startExperimentSender(sender)
         if sender_res!=None and sender_res.status==1:
@@ -100,12 +102,13 @@ def test_meas_2():
 
         time.sleep(8)
 
-        for i in range(3):
+        for i in range(6):
             time.sleep(15)
             print("\n-------------- get Meas Data --------------\n")
             sender_res = retriveExperimentResultsSender(sender)
             if sender_res!=None :
                 print("Received Data Sender RES:"+str(sender_res.status))
+                pprint.pprint(sender_res)
             else: 
                 print ("ERROR retriveExperimentResultsSender RES:"+sender_res)
             
