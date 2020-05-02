@@ -409,9 +409,9 @@ EOF
     
     
     
-    #tmux send-keys -t NS2 "./session_receiver.py $NAMESPACES &" C-m
-    #tmux send-keys -t NS2 "./session_sender.py $NAMESPACES " C-m
-    #tmux send-keys -t NS$(($NAMESPACES-1)) "./reflector.py $NAMESPACES" C-m
+    tmux send-keys -t NS2 "python ./twamp/twamp_demon.py 10.1.1.1 50052 2" C-m
+    tmux send-keys -t NS$(($NAMESPACES-1)) "python ./twamp/twamp_demon.py 10.1.1.2 50052 5" C-m
+    tmux send-keys -t CTRL "python ./twamp/twamp_test.py" C-m
 
 	
     

@@ -616,11 +616,11 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
 
 
 def serve(ipaddr,gprcPort,recvInterf,epbfOutInterf,epbfInInterf):
-    driver = EbpfInterf(epbfOutInterf,epbfInInterf)
-    #driver = IpSetInterf()
+    #driver = EbpfInterf(epbfOutInterf,epbfInInterf)
+    driverip = IpSetInterf()
 
-    sessionsender = SessionSender(driver)
-    sessionreflector = SessionReflector(driver)
+    sessionsender = SessionSender(driverip)
+    sessionreflector = SessionReflector(driverip)
     packetRecv = TestPacketReceiver(recvInterf,sessionsender,sessionreflector)
     sessionreflector.start()
     sessionsender.start()
