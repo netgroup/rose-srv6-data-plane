@@ -40,46 +40,70 @@ class EbpfInterf():
         self.inInterface = inInterface
         self.BLUE=1
         self.RED=0
+        self.mark=[1,2]
+
         try:
             self.inDriver = EbpfPFPLM()
-            self.inDriver.pfplm_load(self.outInterface, self.inDriver.lib.XDP_PROG_DIR_EGRESS, self.inDriver.lib.F_VERBOSE | self.inDriver.lib.F_FORCE)
-            self.inDriver.pfplm_change_active_color(self.outInterface, self.BLUE)
+            self.inDriver.pfplm_load(self.inInterface, self.inDriver.lib.XDP_PROG_DIR_INGRESS, self.inDriver.lib.F_VERBOSE | self.inDriver.lib.F_FORCE)
+
+            self.outDriver = EbpfPFPLM()
+            self.outDriver.pfplm_load(self.outInterface, self.outDriver.lib.XDP_PROG_DIR_EGRESS, self.outDriver.lib.F_VERBOSE | self.outDriver.lib.F_FORCE)
+            self.outDriver.pfplm_change_active_color(self.outInterface, self.mark[self.BLUE])
         except EbpfException as e:
             e.print_exception()
 
 
     def sid_list_converter(self,sid_list):
-        return ",".join(sid_list)[::-1]
+        return ",".join(sid_list)
 
-    def set_sidlist(self,sid_list):
+    def set_sidlist_out(self,sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
         print("EBPF INS sidlist",ebpf_sid_list)
         try:
-            self.inDriver.pfplm_add_flow(self.outInterface, ebpf_sid_list) #da testare
+            self.outDriver.pfplm_add_flow(self.outInterface, ebpf_sid_list) #da testare
         except EbpfException as e:
             e.print_exception()
-    
-    def rem_sidlist(self,sid_list):
+
+
+    def set_sidlist_in(self,sid_list):
+        ebpf_sid_list = self.sid_list_converter(sid_list)
+        print("EBPF INS sidlist",ebpf_sid_list)
+        try:
+            self.inDriver.pfplm_add_flow(self.inInterface, ebpf_sid_list) #da testare
+        except EbpfException as e:
+            e.print_exception()
+
+
+    def rem_sidlist_out(self,sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
         print("EBPF REM sidlist",ebpf_sid_list)
         try:
-            self.inDriver.pfplm_del_flow(self.outInterface, ebpf_sid_list)  #da testare
+            self.outDriver.pfplm_del_flow(self.outInterface, ebpf_sid_list)  #da testare
         except EbpfException as e:
             e.print_exception()
-    
+
+    def rem_sidlist_in(self,sid_list):
+        ebpf_sid_list = self.sid_list_converter(sid_list)
+        print("EBPF REM sidlist",ebpf_sid_list)
+        try:
+            self.inDriver.pfplm_del_flow(self.inInterface, ebpf_sid_list)  #da testare
+        except EbpfException as e:
+            e.print_exception()
+
     def set_color(self,color):
         if(color==self.BLUE):
-            self.inDriver.pfplm_change_active_color(self.outInterface, self.BLUE)
+            self.outDriver.pfplm_change_active_color(self.outInterface, self.mark[self.BLUE])
         else:
-            self.inDriver.pfplm_change_active_color(self.outInterface, self.RED)
+            self.outDriver.pfplm_change_active_color(self.outInterface, self.mark[self.RED])
+
 
     def read_tx_counter(self,color, sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
-        return self.inDriver.pfplm_get_flow_stats(self.outInterface,ebpf_sid_list, color)
+        return self.outDriver.pfplm_get_flow_stats(self.outInterface,ebpf_sid_list, self.mark[color])
 
     def read_rx_counter(self,color, sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
-        pass
+        return self.inDriver.pfplm_get_flow_stats(self.inInterface,ebpf_sid_list, self.mark[color])
 
 ''' ***************************************** DRIVER IPSET '''
 
@@ -214,6 +238,7 @@ class SessionSender(Thread):
         self.numColor = 2 #TODO gestire da controller
         self.hwadapter = driver
         self.scheduler = sched.scheduler(time.time, time.sleep)
+        #self.startMeas("fcff:3::1/fcff:4::1/fcff:5::1","fcff:4::1/fcff:3::1/fcff:2::1","#test")
 
     ''' Thread Tasks'''
 
@@ -332,26 +357,30 @@ class SessionSender(Thread):
         
 
     ''' Interface for the controller'''
-    def startMeas(self, sidList,meas_id):
+    def startMeas(self, meas_id,sidList,revSidList):
         if self.startedMeas:
             return -1 # already started
         print("SESSION SENDER: Start Meas for "+sidList)
+        self.monitored_path["meas_id"] = meas_id
         self.monitored_path["sidlistgrpc"] = sidList
         self.monitored_path["sidlist"] = sidList.split("/")
         self.monitored_path["sidlistrev"] = self.monitored_path["sidlist"][::-1]
+        self.monitored_path["returnsidlist"] = revSidList.split("/")   
+        self.monitored_path["returnsidlistrev"] = self.monitored_path["returnsidlist"][::-1]
         self.monitored_path["meas_counter"] = 0 #reset counter
-        self.monitored_path["meas_id"] = meas_id
         self.monitored_path["txSequenceNumber"] = 1000 #
         self.monitored_path['lastMeas'] = {}
         
-        self.hwadapter.set_sidlist(self.monitored_path["sidlist"])
+        self.hwadapter.set_sidlist_out(self.monitored_path["sidlist"])
+        self.hwadapter.set_sidlist_in(self.monitored_path["returnsidlist"])
         self.startedMeas = True
         return 1 #mettere in un try e semmai tronare errore
 
     def stopMeas(self, sidList):
         print("SESSION SENDER: Stop Meas for "+sidList)
         self.startedMeas = False
-        self.hwadapter.rem_sidlist(self.monitored_path["sidlist"])
+        self.hwadapter.rem_sidlist_out(self.monitored_path["sidlist"])
+        self.hwadapter.rem_sidlist_in(self.monitored_path["returnsidlist"])
         self.monitored_path={}
         return 1 #mettere in un try e semmai tronare errore
 
@@ -504,24 +533,27 @@ class SessionReflector(Thread):
 
     ''' Interface for the controller'''
 
-    def startMeas(self, sidList,retList):
+    def startMeas(self, sidList,revSidList):
         if self.startedMeas:
             return -1 # already started
         print("REFLECTOR: Start Meas for "+sidList)
+
         self.monitored_path["sidlistgrpc"] = sidList
         self.monitored_path["sidlist"] = sidList.split("/")
         self.monitored_path["sidlistrev"] = self.monitored_path["sidlist"][::-1]
-        self.monitored_path["returnsidlist"] = retList.split("/")   
+        self.monitored_path["returnsidlist"] = revSidList.split("/")   
         self.monitored_path["returnsidlistrev"] = self.monitored_path["returnsidlist"][::-1]
         self.monitored_path["revTxSequenceNumber"] = 0 
         #pprint.pprint(self.monitored_path)
-        self.hwadapter.set_sidlist(self.monitored_path["returnsidlist"])
+        self.hwadapter.set_sidlist_in(self.monitored_path["sidlist"])
+        self.hwadapter.set_sidlist_out(self.monitored_path["returnsidlist"])
         self.startedMeas = True
 
     def stopMeas(self, sidList):
         print("REFLECTOR: Stop Meas for "+sidList)
         self.startedMeas = False
-        self.hwadapter.rem_sidlist(self.monitored_path["sidlist"])
+        self.hwadapter.rem_sidlist_in(self.monitored_path["sidlist"])
+        self.hwadapter.rem_sidlist_out(self.monitored_path["returnsidlist"])
         self.monitored_path={}
         return 1 #mettere in un try e semmai tornare errore
 
@@ -573,7 +605,7 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
 
     def startExperimentSender(self, request, context):
         print("GRPC CONTROLLER: startExperimentSender")
-        res = self.sender.startMeas(request.sdlist,"#1234")
+        res = self.sender.startMeas("#1234",request.sdlist,"fcff:4::1/fcff:3::1/fcff:2::1")
         return srv6pmSender_pb2.StartExperimentSenderReply(status=res)
 
     def stopExperimentSender(self, request, context):
@@ -616,11 +648,11 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
 
 
 def serve(ipaddr,gprcPort,recvInterf,epbfOutInterf,epbfInInterf):
-    #driver = EbpfInterf(epbfOutInterf,epbfInInterf)
-    driverip = IpSetInterf()
+    driver = EbpfInterf(epbfOutInterf,epbfInInterf)
+    #driver = IpSetInterf()
 
-    sessionsender = SessionSender(driverip)
-    sessionreflector = SessionReflector(driverip)
+    sessionsender = SessionSender(driver)
+    sessionreflector = SessionReflector(driver)
     packetRecv = TestPacketReceiver(recvInterf,sessionsender,sessionreflector)
     sessionreflector.start()
     sessionsender.start()

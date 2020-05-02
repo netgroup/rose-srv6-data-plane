@@ -24,29 +24,29 @@ def startExperimentSender(stub):
 
 def retriveExperimentResultsSender(stub):
     request = srv6pmCommons_pb2.RetriveExperimentDataRequest()
-    request.sdlist = "fcff:2::1/fcff:3::1/fcff:4::1"
+    request.sdlist = "fcff:3::1/fcff:4::1/fcff:5::1"
     return stub.retriveExperimentResults(request=request)
 
 
 def stopExperimentSender(stub):
     request = srv6pmCommons_pb2.StopExperimentRequest()
-    request.sdlist = "fcff:2::1/fcff:3::1/fcff:4::1"
+    request.sdlist = "fcff:3::1/fcff:4::1/fcff:5::1"
     return stub.stopExperimentSender(request=request)
 
 
 def startExperimentReflector(stub):
     request = srv6pmSender_pb2.StartExperimentSenderRequest()
-    request.sdlist = "fcff:2::1/fcff:3::1/fcff:4::1"
+    request.sdlist = "fcff:3::1/fcff:4::1/fcff:5::1"
     return stub.startExperimentReflector(request=request)
 
 def stopExperimentReflector(stub):
     request = srv6pmCommons_pb2.StopExperimentRequest()
-    request.sdlist = "fcff:2::1/fcff:3::1/fcff:4::1"
+    request.sdlist = "fcff:3::1/fcff:4::1/fcff:5::1"
     return stub.stopExperimentReflector(request=request)
 
 def retriveExperimentResultsReflector(stub):
     request = srv6pmCommons_pb2.RetriveExperimentDataRequest()
-    request.sdlist = "fcff:2::1/fcff:3::1/fcff:4::1"
+    request.sdlist = "fcff:3::1/fcff:4::1/fcff:5::1"
     return stub.retriveExperimentResults(request=request)
 
 def test_meas():
