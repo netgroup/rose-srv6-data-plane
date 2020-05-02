@@ -30,6 +30,10 @@ import srv6pmSender_pb2_grpc
 
 from xdp_srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
 
+
+
+''' ***************************************** DRIVER EBPF '''
+
 class EbpfInterf():
     def __init__(self,outInterface,inInterface):
         self.outInterface = outInterface
@@ -67,6 +71,8 @@ class EbpfInterf():
 
     def read_rx_counter(self,color, segments):
         pass
+
+''' ***************************************** DRIVER IPSET '''
 
 class IpSetInterf():
     def __init__(self):
@@ -115,7 +121,6 @@ class IpSetInterf():
         result = subprocess.run(['ipset', 'list',queue_name], stdout=subprocess.PIPE)
         res_arr = result.stdout.decode('utf-8').splitlines()
 
-        counter = {}
         if not res_arr[0].startswith("Name:"):
             raise Exception('Queue not present')
 
@@ -135,7 +140,6 @@ class IpSetInterf():
         result = subprocess.run(['ipset', 'list',queue_name], stdout=subprocess.PIPE)
         res_arr = result.stdout.decode('utf-8').splitlines();
 
-        counter = {}
         if not res_arr[0].startswith("Name:"):
             raise Exception('Queue not present')
 
@@ -183,7 +187,7 @@ class TestPacketReceiver(Thread):
         # codice netqueue
 
 
-
+''' ***************************************** SENDER '''
 
 class SessionSender(Thread):
     def __init__(self,driver):
@@ -238,36 +242,50 @@ class SessionSender(Thread):
 
     def sendTWAMPTestQuery(self):
         print("sendTWAMPTestQuery")
-        prevcolor = self.getPrevColor()
-        txcounter = self.hwadapter.read_tx_counter(prevcolor,self.monitored_path["sidlist"])
-        print("TX counter: ",txcounter)
+        try:
+            # Get the counter for the color of the previuos interval
+            senderBlockNumber = self.getPrevColor()
+            senderTransmitCounter = self.hwadapter.read_tx_counter(senderBlockNumber,self.monitored_path["sidlist"])
+            print("TX counter: ",senderTransmitCounter)
+            
+
+            ipv6_packet = IPv6()
+            ipv6_packet.src = "fcff:2::1" #TODO me li da il controller?
+            ipv6_packet.dst = "fcff:3::1" #TODO  me li da il controller?
+
+            mod_sidlist = self.set_punt(list(self.monitored_path["sidlistrev"]))
+            print("sending to:",mod_sidlist)
+
+            srv6_header = IPv6ExtHdrSegmentRouting(addresses=mod_sidlist, segleft=2,
+                                                        lastentry=2) 
+
+            srv6_header.segleft = len(mod_sidlist)-1 #TODO vedere se funziona con NS variabile
+            srv6_header.lastentry = len(mod_sidlist)-1 #TODO vedere se funziona con NS variabile
+
+            ipv6_packet_inside = IPv6()
+            ipv6_packet_inside.src = "fcff:2::1" #TODO  me li da il controller?
+            ipv6_packet_inside.dst = "fcff:5::1" #TODO  me li da il controller?
+
+            udp_packet = UDP()
+            udp_packet.dport = 1205 #TODO  me li da il controller?
+            udp_packet.sport = 1206 #TODO  me li da il controller?
         
+            #in band response TODO gestire out band nel controller
+            senderControlCode = 1
 
-        ipv6_packet = IPv6()
-        ipv6_packet.src = "fcff:2::1"
-        ipv6_packet.dst = "fcff:3::1"
+            twamp_data = twamp.TWAMPTestQuery(  SequenceNumber=self.monitored_path["txSequenceNumber"], 
+                                                TransmitCounter=senderTransmitCounter,
+                                                BlockNumber=senderBlockNumber,
+                                                SenderControlCode=senderControlCode) 
 
-        mod_sidlist = self.set_punt(list(self.monitored_path["sidlistrev"]))
-        print("sending to:",mod_sidlist)
+            pkt = ipv6_packet / srv6_header / ipv6_packet_inside / udp_packet / twamp_data
+            
+            scapy.all.send(pkt, count=1, verbose=False)
 
-        ipv6_packet_inside = IPv6()
-        ipv6_packet_inside.src = "fcff:2::1"
-        ipv6_packet_inside.dst = "fcff:5::1"
-
-        udp_packet = UDP()
-        udp_packet.dport = 1205
-        udp_packet.sport = 1206
-    
-    
-        twamp_data = twamp.TWAMPTestQuery(SequenceNumber=1, 
-                                TransmitCounter=txcounter,
-                                BlockNumber=prevcolor,
-                                SenderControlCode=1)
-
-        pkt = ipv6_packet / IPv6ExtHdrSegmentRouting(addresses=mod_sidlist, segleft=2,
-                                                    lastentry=2) / ipv6_packet_inside / udp_packet / twamp_data
-        
-        scapy.all.send(pkt, count=1, verbose=False)
+            #Increase the SN
+            self.monitored_path["txSequenceNumber"]+=1
+        except Exception as e:
+            print(e)
 
 
     def recvTWAMPResponse(self,packet):
@@ -278,20 +296,21 @@ class SessionSender(Thread):
     def startMeas(self, sidList,meas_id):
         if self.startedMeas:
             return -1 # already started
-        print("CTRL: Start Meas for "+sidList)
+        print("SESSION SENDER: Start Meas for "+sidList)
         self.monitored_path["sidlistgrpc"] = sidList
         self.monitored_path["sidlist"] = sidList.split("/")
         self.monitored_path["sidlistrev"] = self.monitored_path["sidlist"][::-1]
         self.monitored_path["meas_counter"] = 0 #reset counter
         self.monitored_path["meas_id"] = meas_id
-        self.monitored_path['lastMeas'] = -1
-        pprint.pprint(self.monitored_path)
+        self.monitored_path["txSequenceNumber"] = 0 #
+        self.monitored_path['lastMeas'] = {}
+        
         self.hwadapter.set_sidlist(self.monitored_path["sidlist"])
         self.startedMeas = True
         return 1 
 
     def stopMeas(self, sidList):
-        print("CTRL: Stop Meas for "+sidList)
+        print("SESSION SENDER: Stop Meas for "+sidList)
         self.startedMeas = False
         self.hwadapter.rem_sidlist(self.monitored_path["sidlist"])
         self.monitored_path={}
@@ -299,12 +318,12 @@ class SessionSender(Thread):
 
 
     def getMeas(self, sidList):
-        print("CTRL: Get Mead Data for "+sidList)
+        print("SESSION SENDER: Get Mead Data for "+sidList)
+        #TODO controllare la sid_list e rilanciate un eccezione
         return self.monitored_path['lastMeas']
 
 
     ''' Utility methods '''
-
     def getNexttimeToChangeColor(self):
         date = datetime.now()
         date_timestamp = date.timestamp()
@@ -336,7 +355,6 @@ class SessionSender(Thread):
         mod_list = list
         mod_list[0]=mod_list[0][:-2]
         return mod_list
-
 
 
 ''' ***************************************** REFLECTOR '''
@@ -521,7 +539,14 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
 
     def retriveExperimentResults(self, request, context):
         print("REQ - retriveExperimentResults")
-        res = self.sender.getMeas(request.sdlist)
+        lastMeas = self.sender.getMeas(request.sdlist)
+        
+        if bool(lastMeas):
+            #TODO prendere i contatori e rispondere
+            #RetriveExperimentDataRequest
+            res=1
+        else:
+            res=-1
         return srv6pmCommons_pb2.ExperimentDataResponse(status=res)
 
 
