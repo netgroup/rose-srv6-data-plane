@@ -1030,7 +1030,7 @@ def __parse_arguments():
     )
     # Port of the gRPC server
     parser.add_argument(
-        '-p', '--grpc-client-port', dest='grpc_server_port', action='store',
+        '-p', '--grpc-server-port', dest='grpc_server_port', action='store',
         default=DEFAULT_GRPC_SERVER_PORT, help='Port of the gRPC server'
     )
     # Port of the gRPC client
