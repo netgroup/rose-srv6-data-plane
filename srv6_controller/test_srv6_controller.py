@@ -123,10 +123,21 @@ def stop_experiment(controller):
 
 # Entry point for this script
 if __name__ == "__main__":
+    # Enable debug mode
+    debug = True
+    # IP address of the gRPC server
+    grpc_server_ip = '::'
     # Port of the gRPC server
-    grpc_port = 12345
+    grpc_server_port = 12345
+    # Port of the gRPC client
+    grpc_client_port = 12345
     # Create a new SRv6 Controller
-    controller = SRv6Controller(grpc_port)
+    controller = SRv6Controller(
+        grpc_server_ip=grpc_server_ip,
+        grpc_server_port=grpc_server_port,
+        grpc_client_port=grpc_client_port,
+        debug=debug
+    )
     # Start a new experiment
     print()
     print()

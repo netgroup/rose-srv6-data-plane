@@ -2,29 +2,46 @@
 
 # General imports
 from argparse import ArgumentParser
+from concurrent import futures
+from threading import Thread
+import grpc
 import logging
 import time
 import grpc_client
 
 # SRv6PM dependencies
 import srv6pmCommons_pb2
+import srv6pmServiceController_pb2_grpc
+import srv6pmServiceController_pb2
 
 
 # Global variables definition
 #
 #
 # Logger reference
+logging.basicConfig(level=logging.NOTSET)
 logger = logging.getLogger(__name__)
 # Default parameters for SRv6 controller
 #
+# Default IP address of the gRPC server
+DEFAULT_GRPC_SERVER_IP = '::'
 # Default port of the gRPC server
-DEFAULT_GRPC_PORT = 12345
-# Define wheter to use SSL or not
-DEFAULT_SECURE = False
+DEFAULT_GRPC_SERVER_PORT = 12345
+# Default port of the gRPC client
+DEFAULT_GRPC_CLIENT_PORT = 12345
+# Define wheter to use SSL or not for the gRPC client
+DEFAULT_CLIENT_SECURE = False
 # SSL certificate of the root CA
-DEFAULT_CERTIFICATE = 'client_cert.pem'
+DEFAULT_CLIENT_CERTIFICATE = 'client_cert.pem'
+# Define wheter to use SSL or not for the gRPC server
+DEFAULT_SERVER_SECURE = False
+# SSL certificate of the gRPC server
+DEFAULT_SERVER_CERTIFICATE = 'server_cert.pem'
+# SSL key of the gRPC server
+DEFAULT_SERVER_KEY = 'server_cert.pem'
 
 
+# Human-readable gRPC return status
 status_code_to_str = {
     srv6pmCommons_pb2.STATUS_SUCCESS: 'Success',
     srv6pmCommons_pb2.STATUS_OPERATION_NOT_SUPPORTED: 'Operation not supported',
@@ -40,7 +57,7 @@ status_code_to_str = {
 
 
 # Python class representing a SRv6 controller
-class SRv6Controller:
+class SRv6Controller():
     """
     A class used to represent a SRv6 Controller
 
@@ -48,13 +65,26 @@ class SRv6Controller:
 
     Attributes
     ----------
-    grpc_port : int
-        The port of the gRPC server
-    secure : bool
-        Define wheter to use SSL or not to communicate with the gRPC server
+    grpc_server_ip : str
+        the IP address of the gRPC server
+    grpc_server_port : int
+        the port of the gRPC server
+    grpc_client_port : int
+        the port of the gRPC client
+    grpc_client_secure : bool
+        define wheter to use SSL or not to communicate with the gRPC server
         (default is False)
-    certificate : str
-        The path of the CA root certificate required for the SSL
+    grpc_client_certificate : str
+        the path of the CA root certificate required for the SSL
+        (default is None)
+    grpc_server_secure : bool
+        define wheter to use SSL or not for the gRPC server
+        (default is False)
+    grpc_server_certificate : str
+        the path of the server certificate required for the SSL
+        (default is None)
+    grpc_server_key : str
+        the path of the server key required for the SSL
         (default is None)
     debug : bool
         Define wheter to enable debug mode or not (default is False)
@@ -83,36 +113,79 @@ class SRv6Controller:
         Stop a running experiment
     """
 
-    def __init__(self, grpc_port, secure=False, certificate=None, debug=False):
+    def __init__(self, grpc_server_ip, grpc_server_port, grpc_client_port,
+                 grpc_client_secure=False, grpc_client_certificate=None,
+                 grpc_server_secure=False, grpc_server_certificate=None,
+                 grpc_server_key=None, debug=False):
         """
         Parameters
         ----------
-        grpc_port : int
+        grpc_server_ip : str
+            the IP address of the gRPC server
+        grpc_server_port : int
             the port of the gRPC server
-        secure : bool
+        grpc_client_port : int
+            the port of the gRPC client
+        grpc_client_secure : bool
             define wheter to use SSL or not to communicate with the gRPC server
             (default is False)
-        certificate : str
+        grpc_client_certificate : str
             the path of the CA root certificate required for the SSL
+            (default is None)
+        grpc_server_secure : bool
+            define wheter to use SSL or not for the gRPC server
+            (default is False)
+        grpc_server_certificate : str
+            the path of the server certificate required for the SSL
+            (default is None)
+        grpc_server_key : str
+            the path of the server key required for the SSL
             (default is None)
         debug : bool
             define wheter to enable debug mode or not (default is False)
         """
 
-        # Port of the gRPC server
-        self.grpc_port = grpc_port
+        logger.info('Initializing SRv6 controller')
+        # Port of the gRPC client
+        self.grpc_client_port = grpc_client_port
         # Measure ID
         self.measure_id = -1
         # gRPC secure mode
-        self.secure = secure
+        self.grpc_client_secure = grpc_client_secure
         # SSL certificate of the root CA required for gRPC secure mode
-        self.certificate = certificate
+        self.grpc_client_certificate = grpc_client_certificate
         # Debug mode
         self.debug = debug
+        # Setup properly the logger
+        if self.debug:
+            logger.setLevel(level=logging.DEBUG)
+        else:
+            logger.setLevel(level=logging.INFO)
         # Mapping IP address to gRPC channels
         self.grpc_channels = dict()
+        # Start the gRPC server
+        # This is a blocking operation, so we need to execute it
+        # in a separated thread
+        kwargs = {
+            'grpc_ip': grpc_server_ip,
+            'grpc_port': grpc_server_port,
+            'secure': grpc_server_secure,
+            'key': grpc_server_key,
+            'certificate': grpc_server_certificate
+        }
+        Thread(target=self.__start_grpc_server, kwargs=kwargs).start()
+        time.sleep(1)
 
-    def get_grpc_channel(self, ip_address):
+    def __get_grpc_session(self, ip_address):
+        """Create a Channel to a server. If a previously opened channel
+           already exists, return it instead of creating a new one.
+
+        Parameters
+        ----------
+        ip_address : str
+            The IP address of the gRPC server
+        """
+
         # Get the gRPC channel of the node
         channel = None
         if ip_address in self.grpc_channels:
@@ -121,13 +194,27 @@ class SRv6Controller:
         else:
             # Get a new gRPC channel for the node
             channel = grpc_client.get_grpc_session(
-                ip_address, self.grpc_port, self.secure, self.certificate)
+                ip_address, self.grpc_client_port,
+                self.grpc_client_secure, self.grpc_client_certificate)
             # Add channel to mapping
             self.grpc_channels[ip_address] = channel
         # Return the channel
         return channel
 
-    def print_status_message(self, status_code, success_msg, failure_msg):
+    def __print_status_message(self, status_code, success_msg, failure_msg):
+        """Print success or failure message depending of the status code
+           returned by a gRPC operation.
+
+        Parameters
+        ----------
+        status_code : int
+            The status code returned by the gRPC operation
+        success_msg : str
+            The message to print in case of success
+        failure_msg : str
+            The message to print in case of error
+        """
+
         if status_code == srv6pmCommons_pb2.STATUS_SUCCESS:
             # Success
             print('%s (status code %s - %s)'
@@ -139,9 +226,9 @@ class SRv6Controller:
                   % (failure_msg, status_code,
                      status_code_to_str.get(status_code, 'Unknown')))
 
-    def _create_uni_srv6_path(self, ingress, egress,
-                              destination, segments, localseg=None):
-        """ Create a unidirectional SRv6 tunnel from <ingress> to <egress>
+    def __create_uni_srv6_path(self, ingress, egress,
+                               destination, segments, localseg=None):
+        """Create a unidirectional SRv6 tunnel from <ingress> to <egress>
 
         Parameters
         ----------
@@ -162,9 +249,9 @@ class SRv6Controller:
         """
 
         # Get the gRPC channel of the ingress node
-        ingress_channel = self.get_grpc_channel(ingress)
+        ingress_channel = self.__get_grpc_session(ingress)
         # Get the gRPC channel of the egress node
-        egress_channel = self.get_grpc_channel(egress)
+        egress_channel = self.__get_grpc_session(egress)
         # Add seg6 route to <ingress> to steer the packets sent to the
         # <destination> through the SID list <segments>
         #
@@ -177,7 +264,7 @@ class SRv6Controller:
             segments=segments
         )
         # Pretty print status code
-        self.print_status_message(
+        self.__print_status_message(
             status_code=res,
             success_msg='Added SRv6 Path',
             failure_msg='Error in add_srv6_path()'
@@ -202,7 +289,7 @@ class SRv6Controller:
                 table=254
             )
             # Pretty print status code
-            self.print_status_message(
+            self.__print_status_message(
                 status_code=res,
                 success_msg='Added SRv6 Behavior',
                 failure_msg='Error in add_srv6_behavior()'
@@ -213,9 +300,9 @@ class SRv6Controller:
         # Success
         return srv6pmCommons_pb2.STATUS_SUCCESS
 
-    def create_srv6_path(self, node_l, node_r,
-                         sidlist_lr, sidlist_rl, dest_lr, dest_rl,
-                         localseg_lr=None, localseg_rl=None):
+    def __create_srv6_path(self, node_l, node_r,
+                           sidlist_lr, sidlist_rl, dest_lr, dest_rl,
+                           localseg_lr=None, localseg_rl=None):
         """Create a bidirectional SRv6 tunnel.
 
         Parameters
@@ -249,7 +336,7 @@ class SRv6Controller:
         """
 
         # Create a unidirectional SRv6 tunnel from <node_l> to <node_r>
-        res = self._create_uni_srv6_path(
+        res = self.__create_uni_srv6_path(
             ingress=node_l,
             egress=node_r,
             destination=dest_lr,
@@ -260,7 +347,7 @@ class SRv6Controller:
         if res != srv6pmCommons_pb2.STATUS_SUCCESS:
             return res
         # Create a unidirectional SRv6 tunnel from <node_r> to <node_l>
-        res = self._create_uni_srv6_path(
+        res = self.__create_uni_srv6_path(
             ingress=node_r,
             egress=node_l,
             destination=dest_rl,
@@ -273,8 +360,8 @@ class SRv6Controller:
         # Success
         return srv6pmCommons_pb2.STATUS_SUCCESS
 
-    def _destroy_uni_srv6_path(self, ingress, egress,
-                               destination, localseg=None):
+    def __destroy_uni_srv6_path(self, ingress, egress,
+                                destination, localseg=None):
         """Destroy a unidirectional SRv6 tunnel from <ingress> to <egress>
 
         Parameters
@@ -297,9 +384,9 @@ class SRv6Controller:
         """
 
         # Get the gRPC channel of the ingress node
-        ingress_channel = self.get_grpc_channel(ingress)
+        ingress_channel = self.__get_grpc_session(ingress)
         # Get the gRPC channel of the egress node
-        egress_channel = self.get_grpc_channel(egress)
+        egress_channel = self.__get_grpc_session(egress)
         # Remove seg6 route from <ingress> to steer the packets sent to
         # <destination> through the SID list <segments>
         #
@@ -311,7 +398,7 @@ class SRv6Controller:
             destination=destination
         )
         # Pretty print status code
-        self.print_status_message(
+        self.__print_status_message(
             status_code=res,
             success_msg='Removed SRv6 Path',
             failure_msg='Error in remove_srv6_path()'
@@ -334,7 +421,7 @@ class SRv6Controller:
                 segment=localseg
             )
             # Pretty print status code
-            self.print_status_message(
+            self.__print_status_message(
                 status_code=res,
                 success_msg='Removed SRv6 behavior',
                 failure_msg='Error in remove_srv6_behavior()'
@@ -345,8 +432,8 @@ class SRv6Controller:
         # Success
         return srv6pmCommons_pb2.STATUS_SUCCESS
 
-    def destroy_srv6_path(self, node_l, node_r,
-                          dest_lr, dest_rl, localseg_lr, localseg_rl):
+    def __destroy_srv6_path(self, node_l, node_r,
+                            dest_lr, dest_rl, localseg_lr, localseg_rl):
         """Destroy a bidirectional SRv6 tunnel
 
         Parameters
@@ -378,7 +465,7 @@ class SRv6Controller:
         """
 
         # Create a unidirectional SRv6 tunnel from <node_l> to <node_r>
-        res = self._destroy_uni_srv6_path(
+        res = self.__destroy_uni_srv6_path(
             ingress=node_l,
             egress=node_r,
             destination=dest_lr,
@@ -388,7 +475,7 @@ class SRv6Controller:
         if res != srv6pmCommons_pb2.STATUS_SUCCESS:
             return res
         # Create a unidirectional SRv6 tunnel from <node_r> to <node_l>
-        res = self._destroy_uni_srv6_path(
+        res = self.__destroy_uni_srv6_path(
             ingress=node_r,
             egress=node_l,
             destination=dest_rl,
@@ -401,21 +488,70 @@ class SRv6Controller:
         return srv6pmCommons_pb2.STATUS_SUCCESS
 
     # Start the measurement process
-    def start_measurement(self, measure_id, sender, reflector,
-                          send_refl_sidlist, refl_send_sidlist,
-                          send_in_interfaces, refl_in_interfaces,
-                          send_out_interfaces, refl_out_interfaces,
-                          measurement_protocol, send_dst_udp_port,
-                          refl_dst_udp_port, measurement_type,
-                          authentication_mode, authentication_key,
-                          timestamp_format, delay_measurement_mode,
-                          padding_mbz, loss_measurement_mode,
-                          interval_duration, delay_margin, number_of_color):
+    def __start_measurement(self, measure_id, sender, reflector,
+                            send_refl_sidlist, refl_send_sidlist,
+                            send_in_interfaces, refl_in_interfaces,
+                            send_out_interfaces, refl_out_interfaces,
+                            measurement_protocol, send_dst_udp_port,
+                            refl_dst_udp_port, measurement_type,
+                            authentication_mode, authentication_key,
+                            timestamp_format, delay_measurement_mode,
+                            padding_mbz, loss_measurement_mode,
+                            interval_duration, delay_margin, number_of_color):
+        """Start the measurement process on reflector and sender.
+
+        Parameters
+        ----------
+        measure_id : int
+            Identifier for the experiment
+        sender : str
+            The IP address of the sender node
+        reflector : str
+            The IP address of the reflector node
+        send_refl_sidlist : list
+            The SID list to be used by the sender
+        refl_send_sidlist : list
+            The SID list to be used by the reflector
+        send_in_interfaces : list
+            The list of the incoming interfaces of the sender
+        refl_in_interfaces : list
+            The list of the incoming interfaces of the reflector
+        send_out_interfaces : list
+            The list of the outgoing interfaces of the sender
+        refl_out_interfaces : list
+            The list of the outgoing interfaces of the reflector
+        measurement_protocol : str
+            The measurement protocol (i.e. TWAMP or STAMP)
+        send_dst_udp_port : int
+            The destination UDP port used by the sender
+        refl_dst_udp_port : int
+            The destination UDP port used by the reflector
+        measurement_type : str
+            The measurement type (i.e. delay or loss)
+        authentication_mode : str
+            The authentication mode (i.e. HMAC_SHA_256)
+        authentication_key : str
+            The authentication key
+        timestamp_format : str
+            The Timestamp Format (i.e. PTPv2 or NTP)
+        delay_measurement_mode : str
+            Delay measurement mode (i.e. one-way, two-way or loopback mode)
+        padding_mbz : int
+            The padding size
+        loss_measurement_mode : str
+            The loss measurement mode (i.e. Inferred or Direct mode)
+        interval_duration : int
+            The duration of the interval
+        delay_margin : int
+            The delay margin
+        number_of_color : int
+            The number of the color
+        """
 
         # Get the gRPC channel of the sender
-        send_channel = self.get_grpc_channel(sender)
+        send_channel = self.__get_grpc_session(sender)
         # Get the gRPC channel of the reflector
-        refl_channel = self.get_grpc_channel(reflector)
+        refl_channel = self.__get_grpc_session(reflector)
         print("\n************** Start Measurement **************\n")
         # Start the experiment on the reflector
         refl_res = grpc_client.startExperimentReflector(
@@ -435,7 +571,7 @@ class SRv6Controller:
             number_of_color=number_of_color
         )
         # Pretty print status code
-        self.print_status_message(
+        self.__print_status_message(
             status_code=refl_res.status,
             success_msg='Started Measure Reflector',
             failure_msg='Error in startExperimentReflector()'
@@ -464,7 +600,7 @@ class SRv6Controller:
             number_of_color=number_of_color
         )
         # Pretty print status code
-        self.print_status_message(
+        self.__print_status_message(
             status_code=sender_res.status,
             success_msg='Started Measure Sender',
             failure_msg='Error in startExperimentSender()'
@@ -477,10 +613,24 @@ class SRv6Controller:
 
     def get_measurement_results(self, sender, reflector,
                                 send_refl_sidlist, refl_send_sidlist):
+        """Get the results of a measurement process.
+
+        Parameters
+        ----------
+        sender : str
+            The IP address of the sender node
+        reflector : str
+            The IP address of the reflector node
+        send_refl_sidlist : list
+            The SID list used by the sender
+        refl_send_sidlist : list
+            The SID list used by the reflector
+        """
+
         # Get the gRPC channel of the sender
-        send_channel = self.get_grpc_channel(sender)
+        send_channel = self.__get_grpc_session(sender)
         # Get the gRPC channel of the reflector
-        refl_channel = self.get_grpc_channel(reflector)
+        refl_channel = self.__get_grpc_session(reflector)
         # Retrieve the results of the experiment
         print("\n************** Get Measurement Data **************\n")
         # Retrieve the results from the sender
@@ -489,7 +639,7 @@ class SRv6Controller:
             sidlist=send_refl_sidlist
         )
         # Pretty print status code
-        self.print_status_message(
+        self.__print_status_message(
             status_code=sender_res.status,
             success_msg='Received Data Sender',
             failure_msg='Error in retriveExperimentResultsSender()'
@@ -514,10 +664,24 @@ class SRv6Controller:
 
     def stop_measurement(self, sender, reflector,
                          send_refl_sidlist, refl_send_sidlist):
+        """Stop a measurement process on reflector and sender.
+
+        Parameters
+        ----------
+        sender : str
+            The IP address of the sender node
+        reflector : str
+            The IP address of the reflector node
+        send_refl_sidlist : list
+            The SID list used by the sender
+        refl_send_sidlist : list
+            The SID list used by the reflector
+        """
+
         # Get the gRPC channel of the sender
-        send_channel = self.get_grpc_channel(sender)
+        send_channel = self.__get_grpc_session(sender)
         # Get the gRPC channel of the reflector
-        refl_channel = self.get_grpc_channel(reflector)
+        refl_channel = self.__get_grpc_session(reflector)
         print("\n************** Stop Measurement **************\n")
         # Stop the experiment on the sender
         sender_res = grpc_client.stopExperimentSender(
@@ -525,7 +689,7 @@ class SRv6Controller:
             sidlist=send_refl_sidlist
         )
         # Pretty print status code
-        self.print_status_message(
+        self.__print_status_message(
             status_code=sender_res.status,
             success_msg='Stopped Measure Sender',
             failure_msg='Error in stopExperimentSender()'
@@ -539,7 +703,7 @@ class SRv6Controller:
             sidlist=refl_send_sidlist
         )
         # Pretty print status code
-        self.print_status_message(
+        self.__print_status_message(
             status_code=refl_res.status,
             success_msg='Stopped Measure Reflector',
             failure_msg='Error in stopExperimentReflector()'
@@ -616,12 +780,12 @@ class SRv6Controller:
             Identifier for the experiment (default is None).
             If the argument 'measure_id' isn't passed in, the measure_id is
             automatically generated.
-        send_refl_localseg=None : str, optional
+        send_refl_localseg : str, optional
             The local segment associated to the End.DT6 function on the sender
             (default is None).
             If the argument 'send_localseg' isn't passed in, the seg6local
             End.DT6 route is not created.
-        refl_send_localseg=None : str, optional
+        refl_send_localseg : str, optional
             The local segment associated to the End.DT6 function on the
             reflector (default is None).
             If the argument 'send_localseg' isn't passed in, the seg6local
@@ -634,7 +798,7 @@ class SRv6Controller:
             measure_id = self.measure_id
         # Create a bidirectional SRv6 tunnel between the sender and the
         # reflector
-        res = self.create_srv6_path(
+        res = self.__create_srv6_path(
             node_l=sender,
             node_r=reflector,
             dest_lr=send_refl_dest,
@@ -648,7 +812,7 @@ class SRv6Controller:
         if res != srv6pmCommons_pb2.STATUS_SUCCESS:
             return res
         # Start measurement process
-        res = self.start_measurement(
+        res = self.__start_measurement(
             measure_id=measure_id,
             sender=sender,
             reflector=reflector,
@@ -680,7 +844,19 @@ class SRv6Controller:
 
     def get_experiment_results(self, sender, reflector,
                                send_refl_sidlist, refl_send_sidlist):
-        """Get the results of an experiment."""
+        """Get the results of an experiment.
+
+        Parameters
+        ----------
+        sender : str
+            The IP address of the sender node
+        reflector : str
+            The IP address of the reflector node
+        send_refl_sidlist : list
+            The SID list to be used by the sender
+        refl_send_sidlist : list
+            The SID list to be used by the reflector
+        """
 
         # Get the results
         return self.get_measurement_results(
@@ -693,7 +869,33 @@ class SRv6Controller:
     def stop_experiment(self, sender, reflector, send_refl_dest,
                         refl_send_dest, send_refl_sidlist, refl_send_sidlist,
                         send_refl_localseg=None, refl_send_localseg=None):
-        """Stop a running experiment."""
+        """Stop a running experiment.
+
+        Parameters
+        ----------
+        sender : str
+            The IP address of the sender node
+        reflector : str
+            The IP address of the reflector node
+        send_refl_dest : str
+            The destination of the SRv6 path on the sender
+        refl_send_dest : str
+            The destination of the SRv6 path on the reflector
+        send_refl_sidlist : list
+            The SID list used by the sender
+        refl_send_sidlist : list
+            The SID list used by the reflector
+        send_refl_localseg : str, optional
+            The local segment associated to the End.DT6 function on the sender
+            (default is None).
+            If the argument 'send_localseg' isn't passed in, the seg6local
+            End.DT6 route is not removed.
+        refl_send_localseg : str, optional
+            The local segment associated to the End.DT6 function on the
+            reflector (default is None).
+            If the argument 'send_localseg' isn't passed in, the seg6local
+            End.DT6 route is not removed.
+        """
 
         # Stop the experiment
         res = self.stop_measurement(
@@ -706,7 +908,7 @@ class SRv6Controller:
         if res != srv6pmCommons_pb2.STATUS_SUCCESS:
             return res
         # Remove the SRv6 path
-        res = self.destroy_srv6_path(
+        res = self.__destroy_srv6_path(
             node_l=sender,
             node_r=reflector,
             dest_lr=send_refl_dest,
@@ -720,27 +922,148 @@ class SRv6Controller:
         # Success
         return srv6pmCommons_pb2.STATUS_SUCCESS
 
+    class _SRv6PMService(
+            srv6pmServiceController_pb2_grpc.SRv6PMControllerServicer):
+        """Private class implementing methods exposed by the gRPC server"""
 
-# Parse options
-def parse_arguments():
+        def __init__(self, controller):
+            """
+            Parameters
+            ----------
+            controller : SRv6Controller
+                the reference of the SRv6 controller
+            """
+
+            # The reference of the SRv6 controller
+            self.controller = controller
+
+        def SendMeasurementData(self, request, context):
+            """RPC used to send measurement data to the controller"""
+
+            logger.debug('Measurement data received: %s' % request)
+            # Extract data from the request
+            for data in request.measurement_data:
+                measure_id = data.measure_id
+                interval = data.interval
+                timestamp = data.timestamp
+                color = data.color
+                sender_tx_counter = data.sender_tx_counter
+                sender_rx_counter = data.sender_rx_counter
+                reflector_tx_counter = data.reflector_tx_counter
+                reflector_rx_counter = data.reflector_rx_counter
+                # Publish data on Kafka
+            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+            return srv6pmServiceController_pb2.SendMeasurementDataResponse(
+                status=status)
+
+    def __start_grpc_server(self,
+                            grpc_ip=DEFAULT_GRPC_SERVER_IP,
+                            grpc_port=DEFAULT_GRPC_SERVER_PORT,
+                            secure=DEFAULT_SERVER_SECURE,
+                            key=DEFAULT_SERVER_KEY,
+                            certificate=DEFAULT_SERVER_CERTIFICATE):
+        """Start gRPC on the controller
+
+        Parameters
+        ----------
+        grpc_ip : str
+            the IP address of the gRPC server
+        grpc_port : int
+            the port of the gRPC server
+        secure : bool
+            define wheter to use SSL or not for the gRPC server
+            (default is False)
+        certificate : str
+            the path of the server certificate required for the SSL
+            (default is None)
+        key : str
+            the path of the server key required for the SSL
+            (default is None)
+        """
+
+        # Setup gRPC server
+        #
+        # Create the server and add the handler
+        grpc_server = grpc.server(futures.ThreadPoolExecutor())
+        srv6pmServiceController_pb2_grpc \
+            .add_SRv6PMControllerServicer_to_server(self._SRv6PMService(self),
+                                                    grpc_server)
+        # If secure mode is enabled, we need to create a secure endpoint
+        if secure:
+            # Read key and certificate
+            with open(key) as f:
+                key = f.read()
+            with open(certificate) as f:
+                certificate = f.read()
+            # Create server SSL credentials
+            grpc_server_credentials = grpc.ssl_server_credentials(
+                ((key, certificate,),)
+            )
+            # Create a secure endpoint
+            grpc_server.add_secure_port(
+                '[%s]:%s' % (grpc_ip, grpc_port),
+                grpc_server_credentials
+            )
+        else:
+            # Create an insecure endpoint
+            grpc_server.add_insecure_port(
+                '[%s]:%s' % (grpc_ip, grpc_port)
+            )
+        # Start the loop for gRPC
+        logger.info('Listening gRPC')
+        grpc_server.start()
+        while True:
+            time.sleep(5)
+
+
+def __parse_arguments():
+    """Parse options received from command-line"""
+
     # Get parser
     parser = ArgumentParser(
         description='SRv6 Controller'
     )
     # Port of the gRPC server
     parser.add_argument(
-        '-p', '--grpc-port', dest='grpc_port', action='store',
-        default=DEFAULT_GRPC_PORT, help='Port of the gRPC server'
+        '-a', '--grpc-server-ip', dest='grpc_server_ip', action='store',
+        default=DEFAULT_GRPC_SERVER_IP, help='IP address of the gRPC server'
     )
-    # Define wheter to use SSL or not
+    # Port of the gRPC server
     parser.add_argument(
-        '-s', '--secure', action='store_true',
-        help='Activate secure mode', default=DEFAULT_SECURE
+        '-p', '--grpc-client-port', dest='grpc_server_port', action='store',
+        default=DEFAULT_GRPC_SERVER_PORT, help='Port of the gRPC server'
+    )
+    # Port of the gRPC client
+    parser.add_argument(
+        '-g', '--grpc-client-port', dest='grpc_client_port', action='store',
+        default=DEFAULT_GRPC_CLIENT_PORT, help='Port of the gRPC client'
+    )
+    # Define wheter to use SSL or not for the gRPC client
+    parser.add_argument(
+        '-s', '--client-secure', action='store_true',
+        help='Activate secure mode for the gRPC client',
+        default=DEFAULT_CLIENT_SECURE
     )
     # SSL certificate of the root CA
     parser.add_argument(
         '-c', '--client-cert', dest='client_cert', action='store',
-        default=DEFAULT_CERTIFICATE, help='Client certificate file'
+        default=DEFAULT_CLIENT_CERTIFICATE, help='Client certificate file'
+    )
+    # Define wheter to use SSL or not for the gRPC server
+    parser.add_argument(
+        '-a', '--server-secure', action='store_true',
+        help='Activate secure mode for the gRPC server',
+        default=DEFAULT_SERVER_SECURE
+    )
+    # SSL certificate of the gRPC server
+    parser.add_argument(
+        '-b', '--server-cert', dest='client_cert', action='store',
+        default=DEFAULT_SERVER_CERTIFICATE, help='Server certificate file'
+    )
+    # SSL key of the gRPC server
+    parser.add_argument(
+        '-c', '--server-key', dest='client_cert', action='store',
+        default=DEFAULT_SERVER_KEY, help='Server key file'
     )
     # Define wheter to enable debug mode or not
     parser.add_argument(
@@ -755,15 +1078,25 @@ def parse_arguments():
 # Entry point for this script
 if __name__ == "__main__":
     # Process command-line arguments
-    args = parse_arguments()
+    args = __parse_arguments()
+    # gRPC server IP address
+    grpc_server_ip = args.grpc_server_ip
     # gRPC server port
+    grpc_server_port = args.grpc_server_port
+    # gRPC client port
     # We assume that the same port is used
     # by all the gRPC server
-    grpc_port = args.grpc_port
-    # Setup properly the secure mode
-    secure = args.secure
+    grpc_client_port = args.grpc_client_port
+    # Setup properly the secure mode for the gRPC client
+    client_secure = args.client_secure
     # SSL certificate of the root CA required for gRPC secure mode
-    certificate = args.client_cert
+    client_certificate = args.client_cert
+    # Setup properly the secure mode for the gRPC server
+    server_secure = args.server_secure
+    # SSL certificate of the gRPC server
+    server_certificate = args.server_cert
+    # SSL key of the gRPC server
+    server_key = args.server_key
     # Setup properly the logger
     if args.debug:
         logger.setLevel(level=logging.DEBUG)
@@ -773,7 +1106,17 @@ if __name__ == "__main__":
     server_debug = logger.getEffectiveLevel() == logging.DEBUG
     logger.info('SERVER_DEBUG:' + str(server_debug))
     # Test controller
-    controller = SRv6Controller(12345)
+    controller = SRv6Controller(
+        grpc_server_ip=grpc_server_ip,
+        grpc_server_port=grpc_server_port,
+        grpc_client_port=grpc_client_port,
+        grpc_client_secure=client_secure,
+        grpc_client_certificate=client_certificate,
+        grpc_server_secure=server_secure,
+        grpc_server_certificate=server_certificate,
+        grpc_server_key=server_key,
+        debug=args.debug,
+    )
     controller.start_experiment(
         sender='fcff:3::1',
         reflector='fcff:2::1',
