@@ -45,7 +45,7 @@ From the base directory of the project
 
 first step set the env var PYTHONPATH
 
-    $ export PYTHONPATH="${PYTHONPATH}:./grpc-services/protos/gen-py:./twamp"
+    $ export PYTHONPATH="${PYTHONPATH}:./grpc-services/protos/gen-py:./twamp:../xdp_experiments/srv6-pfplm/"
 
 then execute the script
 

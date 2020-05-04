@@ -27,7 +27,9 @@ message SRv6EPReplySender{
 }
 
 message StartExperimentSenderRequest {
+    string measure_id = 1;
     string sdlist = 1;
+    string sdlistreverse = 1;
     SenderOptions sender_options = 2;
     ColorOptions color_options = 3;
 }
@@ -37,13 +39,14 @@ message StartExperimentSenderReply {
 }
 
 message SenderOptions {
-    MeasurementProtocol measurement_protocol = 1;
-    uint32 dst_udp_port = 2;
-    AuthenticationMode authentication_mode = 3;
-    MeasurementType measurement_type = 4;
-    TimestampFormat timestamp_format = 5;
-    MeasurementDelayMode measurement_delay_mode = 6;
-    uint32 padding_mbz = 7;
-    MeasurementLossMode measurement_loss_mode = 8;
-    string authentication_key = 9;
+    uint32 ss_udp_port = 1;
+    uint32 refl_udp_port = 2;
+    MesurementProtocol mesurement_protocol = 3;
+    AuthenticationMode authentication_mode = 4;
+    MeasurementType measurement_type = 5;
+    TimestampFormat timestamp_format = 6;
+    MeasurementDelayMode measurement_delay_mode = 7;
+    uint32 padding_mbz = 8;
+    MeasurementLossMode measurement_loss_mode = 9;
+    string authentication_key = 10;
 }

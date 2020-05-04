@@ -28,7 +28,9 @@ message SRv6EPReplyReflector {
 }
 
 message StartExperimentReflectorRequest {
+    string measure_id = 1;
     string sdlist = 1;
+    string sdlistreverse = 1;
     ReflectorOptions reflector_options = 2;
     ColorOptions color_options = 3;
 }
@@ -38,10 +40,11 @@ message StartExperimentReflectorReply {
 }
 
 message ReflectorOptions {
-    MeasurementProtocol measurement_protocol = 1;
-    uint32 dst_udp_port = 2;
-    AuthenticationMode authentication_mode = 3;
-    MeasurementType measurement_type = 4;
-    MeasurementLossMode measurement_loss_mode = 5;
-    string authentication_key = 6;
+    uint32 ss_udp_port = 1;
+    uint32 refl_udp_port = 2;
+    MesurementProtocol mesurement_protocol = 3;
+    AuthenticationMode authentication_mode = 4;
+    MeasurementType measurement_type = 5;
+    MeasurementLossMode measurement_loss_mode = 6;
+    string authentication_key = 7;
 }

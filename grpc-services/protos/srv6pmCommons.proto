@@ -16,14 +16,19 @@ message RetriveExperimentDataRequest {
 }
 
 message MeasurementData {
-    uint32 measure_id = 1;
+    string meas_id = 1;
     uint32 interval = 2;
     string timestamp = 3;
-    string color = 4;
-    uint32 sender_tx_counter = 5;
-    uint32 sender_rx_counter = 6;
-    uint32 reflector_tx_counter = 7;
-    uint32 reflector_rx_counter = 8;
+    // forward path
+    uint64 ssSeqNum = 4;
+    uint64 ssTxCounter = 5;
+    uint64 rfRxCounter = 6;
+    uint32 fwColor = 7;
+    // reverse path
+    uint64 rfSeqNum = 8;
+    uint64 rfTxCounter = 9;
+    uint64 ssRxCounter = 10;
+    uint32 rvColor = 11;
 }
 
 message ExperimentDataResponse {
@@ -35,9 +40,9 @@ message StopExperimentReply {
     StatusCode status = 1;
 }
 
-enum MeasurementProtocol {
-    STAMP = 0;
-    TWAMP = 1;
+enum MesurementProtocol {
+    TWAMP = 0;
+    STAMP = 1;
 }
 
 enum StatusCode {
