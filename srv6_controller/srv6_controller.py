@@ -611,7 +611,7 @@ class SRv6Controller():
         # Success
         return srv6pmCommons_pb2.STATUS_SUCCESS
 
-    def get_measurement_results(self, sender, reflector,
+    def __get_measurement_results(self, sender, reflector,
                                 send_refl_sidlist, refl_send_sidlist):
         """Get the results of a measurement process.
 
@@ -662,7 +662,7 @@ class SRv6Controller():
         # Return the results
         return res
 
-    def stop_measurement(self, sender, reflector,
+    def __stop_measurement(self, sender, reflector,
                          send_refl_sidlist, refl_send_sidlist):
         """Stop a measurement process on reflector and sender.
 
@@ -859,7 +859,7 @@ class SRv6Controller():
         """
 
         # Get the results
-        return self.get_measurement_results(
+        return self.__get_measurement_results(
             sender=sender,
             reflector=reflector,
             send_refl_sidlist=send_refl_sidlist,
@@ -898,7 +898,7 @@ class SRv6Controller():
         """
 
         # Stop the experiment
-        res = self.stop_measurement(
+        res = self.__stop_measurement(
             sender=sender,
             reflector=reflector,
             send_refl_sidlist=send_refl_sidlist,
