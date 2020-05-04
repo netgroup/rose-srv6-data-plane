@@ -377,7 +377,8 @@ class SessionSender(Thread):
         self.hwadapter.set_sidlist_out(self.monitored_path["sidlist"])
         self.hwadapter.set_sidlist_in(self.monitored_path["returnsidlist"])
         self.startedMeas = True
-        return 1 #mettere in un try e semmai tronare errore
+        status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+        return status #mettere in un try e semmai tronare errore
 
     def stopMeas(self, sidList):
         print("SESSION SENDER: Stop Meas for "+sidList)
@@ -609,7 +610,11 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
     def startExperimentSender(self, request, context):
         print("GRPC CONTROLLER: startExperimentSender")
         res = self.sender.startMeas("#1234",request.sdlist,"fcff:4::1/fcff:3::1/fcff:2::1")
-        return srv6pmSender_pb2.StartExperimentSenderReply(status=res)
+        if res == 1:
+            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS') 
+        else:
+            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_INTERNAL_ERROR') 
+        return srv6pmSender_pb2.StartExperimentSenderReply(status=status)
 
     def stopExperimentSender(self, request, context):
         print("GRPC CONTROLLER: stopExperimentSender")
@@ -620,12 +625,14 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
     def startExperimentReflector(self, request, context):
         print("GRPC CONTROLLER: startExperimentReflector")
         self.reflector.startMeas(request.sdlist,"fcff:4::1/fcff:3::1/fcff:2::1")
-        return srv6pmReflector_pb2.StartExperimentReflectorReply(status=1)
+        status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+        return srv6pmReflector_pb2.StartExperimentReflectorReply(status=status)
 
     def stopExperimentReflector(self, request, context):
         print("GRPC CONTROLLER: startExperimentReflector")
         self.reflector.stopMeas(request.sdlist)
-        return srv6pmCommons_pb2.StopExperimentReply(status=1)
+        status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+        return srv6pmCommons_pb2.StopExperimentReply(status=status)
 
     def retriveExperimentResults(self, request, context):
         print("GRPC CONTROLLER: retriveExperimentResults")
@@ -633,7 +640,7 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
         
         if bool(lastMeas):
             response = srv6pmCommons_pb2.ExperimentDataResponse()
-            response.status = 1
+            response.status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
             response.meas_id = meas_id
             response.ssSeqNum = lastMeas['sssn']
             response.ssTxCounter = lastMeas['ssTXc']
@@ -645,7 +652,8 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
             response.ssRxCounter = lastMeas['ssRXc'] 
             response.rvColor = lastMeas['rvColor']
         else:
-            response = srv6pmCommons_pb2.ExperimentDataResponse(status=-1)
+            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_INTERNAL_ERROR') 
+            response = srv6pmCommons_pb2.ExperimentDataResponse(status=status)
         
         return response
 
