@@ -640,17 +640,18 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
         
         if bool(lastMeas):
             response = srv6pmCommons_pb2.ExperimentDataResponse()
-            response.status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
-            response.meas_id = meas_id
-            response.ssSeqNum = lastMeas['sssn']
-            response.ssTxCounter = lastMeas['ssTXc']
-            response.rfRxCounter = lastMeas['rfRXc']
-            response.fwColor = lastMeas['fwColor']
+            data = response.measurement_data.add()
+            data.status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+            data.meas_id = meas_id
+            data.ssSeqNum = lastMeas['sssn']
+            data.ssTxCounter = lastMeas['ssTXc']
+            data.rfRxCounter = lastMeas['rfRXc']
+            data.fwColor = lastMeas['fwColor']
 
-            response.rfSeqNum = lastMeas['rfsn']
-            response.rfTxCounter = lastMeas['rfTXc']
-            response.ssRxCounter = lastMeas['ssRXc'] 
-            response.rvColor = lastMeas['rvColor']
+            data.rfSeqNum = lastMeas['rfsn']
+            data.rfTxCounter = lastMeas['rfTXc']
+            data.ssRxCounter = lastMeas['ssRXc'] 
+            data.rvColor = lastMeas['rvColor']
         else:
             status = srv6pmCommons_pb2.StatusCode.Value('STATUS_INTERNAL_ERROR') 
             response = srv6pmCommons_pb2.ExperimentDataResponse(status=status)
