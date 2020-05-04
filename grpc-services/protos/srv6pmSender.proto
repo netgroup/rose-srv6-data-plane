@@ -27,7 +27,9 @@ message SRv6EPReplySender{
 }
 
 message StartExperimentSenderRequest {
+    string measure_id = 1;
     string sdlist = 1;
+    string sdlistreverse = 1;
     SenderOptions sender_options = 2;
     ColorOptions color_options = 3;
 }
@@ -37,8 +39,9 @@ message StartExperimentSenderReply {
 }
 
 message SenderOptions {
-    MesurementProtocol mesurement_protocol = 1;
-    uint32 dst_udp_port = 2;
+    uint32 ss_udp_port = 1;
+    uint32 refl_udp_port = 1;
+    MesurementProtocol mesurement_protocol = 2;
     AuthenticationMode authentication_mode = 3;
     MesurementType mesurement_type = 4;
     TimestampFormat timestamp_format = 5;

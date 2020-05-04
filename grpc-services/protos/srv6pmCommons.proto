@@ -35,8 +35,8 @@ message StopExperimentReply {
 }
 
 enum MesurementProtocol {
-    STAMP = 0;
-    TWAMP = 1;
+    TWAMP = 0;
+    STAMP = 1;
 }
 
 enum StatusCode {

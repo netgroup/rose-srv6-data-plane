@@ -367,8 +367,8 @@ class SessionSender(Thread):
         self.monitored_path["sidlistrev"] = self.monitored_path["sidlist"][::-1]
         self.monitored_path["returnsidlist"] = revSidList.split("/")   
         self.monitored_path["returnsidlistrev"] = self.monitored_path["returnsidlist"][::-1]
-        self.monitored_path["meas_counter"] = 0 #reset counter
-        self.monitored_path["txSequenceNumber"] = 1000 #
+        self.monitored_path["meas_counter"] = 1 #reset counter
+        self.monitored_path["txSequenceNumber"] = 1 #
         self.monitored_path['lastMeas'] = {}
         
         self.hwadapter.set_sidlist_out(self.monitored_path["sidlist"])
