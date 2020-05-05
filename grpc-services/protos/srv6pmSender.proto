@@ -28,10 +28,10 @@ message SRv6EPReplySender{
 
 message StartExperimentSenderRequest {
     string measure_id = 1;
-    string sdlist = 1;
-    string sdlistreverse = 1;
-    SenderOptions sender_options = 2;
-    ColorOptions color_options = 3;
+    string sdlist = 2;
+    string sdlistreverse = 3;
+    SenderOptions sender_options = 4;
+    ColorOptions color_options = 5;
 }
 
 message StartExperimentSenderReply {

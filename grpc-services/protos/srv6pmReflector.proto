@@ -29,10 +29,10 @@ message SRv6EPReplyReflector {
 
 message StartExperimentReflectorRequest {
     string measure_id = 1;
-    string sdlist = 1;
-    string sdlistreverse = 1;
-    ReflectorOptions reflector_options = 2;
-    ColorOptions color_options = 3;
+    string sdlist = 2;
+    string sdlistreverse = 3;
+    ReflectorOptions reflector_options = 4;
+    ColorOptions color_options = 5;
 }
 
 message StartExperimentReflectorReply {
