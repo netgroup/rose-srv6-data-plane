@@ -1,0 +1,100 @@
+syntax = "proto3";
+package srv6pm;
+import "srv6pmCommons.proto";
+
+service SRv6Manager {
+  // Create operation
+  rpc Create (SRv6ManagerRequest) returns (SRv6ManagerReply) {}
+  // Get operation
+  rpc Get (SRv6ManagerRequest) returns (SRv6ManagerReply) {}
+  // Update operation
+  rpc Update (SRv6ManagerRequest) returns (SRv6ManagerReply) {}
+  // Remove operation
+  rpc Remove (SRv6ManagerRequest) returns (SRv6ManagerReply) {}
+}
+
+// The SRv6ManagerRequest message containing entities.
+message SRv6ManagerRequest {
+  EntityType entity_type = 1;
+  oneof srv6_entity {
+    SRv6PathRequest srv6_path_request = 2;
+    SRv6BehaviorRequest srv6_behavior_request = 3;
+    InterfaceRequest interface_request = 4;
+  }
+}
+
+// The SRv6ManagerReply message containing a simple status message
+// and some optional fields
+message SRv6ManagerReply {
+  StatusCode status = 1;
+  repeated Interface interfaces = 2;
+}
+
+/* Entity types */
+enum EntityType {
+  SRv6PathEntity = 0;
+  SRv6BehaviorEntity = 1;
+  InterfaceEntity = 2;
+}
+// The SRv6PathRequest message containing a number of paths.
+message SRv6PathRequest {
+  repeated SRv6Path paths = 1;
+}
+
+// The Path message encodes a path request
+message SRv6Path {
+  // Route of the SRv6 policy
+  string destination = 1;
+  // SRv6 Segment
+  message SRv6Segment {
+    string segment = 1;
+  }
+  // A collection of SRv6 Segments
+  repeated SRv6Segment sr_path = 2;
+  // Encap mode
+  string encapmode = 3;
+  // Device name
+  string device = 4;
+  // Table
+  int32 table = 5;
+}
+
+
+// The SRv6BehaviorRequest message containing a number of behaviors.
+message SRv6BehaviorRequest {
+  repeated SRv6Behavior behaviors = 1;
+}
+
+// The SRv6Behavior message encodes a behavior request
+message SRv6Behavior {
+  // Active segment to match
+  string segment = 1;
+  // Action to perform
+  string action = 2;
+   // Nexthop
+  string nexthop = 3;
+  // Routing table
+  int32 table = 4;
+  // Interface
+  string interface = 5;
+  // SRv6 Segment
+  message SRv6Segment {
+    string segment = 1;
+  }
+  // A collection of SRv6 Segments
+  repeated SRv6Segment segs = 6;
+  // Non-loopback device
+  string device = 7;
+  // Local SID table
+  int32 localsid_table = 8;
+}
+
+// The InterfaceRequest message containing a number of interfaces.
+message InterfaceRequest {
+
+}
+
+// Interface
+message Interface {
+    string name = 1;
+}
