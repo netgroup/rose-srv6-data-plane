@@ -16,7 +16,7 @@ message RetriveExperimentDataRequest {
 }
 
 message MeasurementData {
-    string meas_id = 1;
+    uint32 meas_id = 1;
     uint32 interval = 2;
     string timestamp = 3;
     // forward path

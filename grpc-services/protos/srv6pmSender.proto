@@ -27,7 +27,7 @@ message SRv6EPReplySender{
 }
 
 message StartExperimentSenderRequest {
-    string measure_id = 1;
+    uint32 measure_id = 1;
     string sdlist = 2;
     string sdlistreverse = 3;
     SenderOptions sender_options = 4;
