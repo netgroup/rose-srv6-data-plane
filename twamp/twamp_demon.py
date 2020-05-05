@@ -609,7 +609,7 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
 
     def startExperimentSender(self, request, context):
         print("GRPC CONTROLLER: startExperimentSender")
-        res = self.sender.startMeas("#1234",request.sdlist,"fcff:4::1/fcff:3::1/fcff:2::1")
+        res = self.sender.startMeas(request.measure_id,request.sdlist,request.sdlistreverse)
         if res == 1:
             status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS') 
         else:
@@ -624,7 +624,7 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
 
     def startExperimentReflector(self, request, context):
         print("GRPC CONTROLLER: startExperimentReflector")
-        self.reflector.startMeas(request.sdlist,"fcff:4::1/fcff:3::1/fcff:2::1")
+        self.reflector.startMeas(request.sdlist,request.sdlistreverse)
         status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
         return srv6pmReflector_pb2.StartExperimentReflectorReply(status=status)
 
