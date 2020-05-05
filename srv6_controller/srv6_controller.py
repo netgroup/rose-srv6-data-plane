@@ -29,11 +29,11 @@ DEFAULT_GRPC_SERVER_IP = '::'
 DEFAULT_GRPC_SERVER_PORT = 12345
 # Default port of the gRPC client
 DEFAULT_GRPC_CLIENT_PORT = 12345
-# Define wheter to use SSL or not for the gRPC client
+# Define whether to use SSL or not for the gRPC client
 DEFAULT_CLIENT_SECURE = False
 # SSL certificate of the root CA
 DEFAULT_CLIENT_CERTIFICATE = 'client_cert.pem'
-# Define wheter to use SSL or not for the gRPC server
+# Define whether to use SSL or not for the gRPC server
 DEFAULT_SERVER_SECURE = False
 # SSL certificate of the gRPC server
 DEFAULT_SERVER_CERTIFICATE = 'server_cert.pem'
@@ -72,13 +72,13 @@ class SRv6Controller():
     grpc_client_port : int
         the port of the gRPC client
     grpc_client_secure : bool
-        define wheter to use SSL or not to communicate with the gRPC server
+        define whether to use SSL or not to communicate with the gRPC server
         (default is False)
     grpc_client_certificate : str
         the path of the CA root certificate required for the SSL
         (default is None)
     grpc_server_secure : bool
-        define wheter to use SSL or not for the gRPC server
+        define whether to use SSL or not for the gRPC server
         (default is False)
     grpc_server_certificate : str
         the path of the server certificate required for the SSL
@@ -87,7 +87,7 @@ class SRv6Controller():
         the path of the server key required for the SSL
         (default is None)
     debug : bool
-        Define wheter to enable debug mode or not (default is False)
+        Define whether to enable debug mode or not (default is False)
 
     Methods
     -------
@@ -127,13 +127,13 @@ class SRv6Controller():
         grpc_client_port : int
             the port of the gRPC client
         grpc_client_secure : bool
-            define wheter to use SSL or not to communicate with the gRPC server
+            define whether to use SSL or not to communicate with the gRPC server
             (default is False)
         grpc_client_certificate : str
             the path of the CA root certificate required for the SSL
             (default is None)
         grpc_server_secure : bool
-            define wheter to use SSL or not for the gRPC server
+            define whether to use SSL or not for the gRPC server
             (default is False)
         grpc_server_certificate : str
             the path of the server certificate required for the SSL
@@ -142,7 +142,7 @@ class SRv6Controller():
             the path of the server key required for the SSL
             (default is None)
         debug : bool
-            define wheter to enable debug mode or not (default is False)
+            define whether to enable debug mode or not (default is False)
         """
 
         logger.info('Initializing SRv6 controller')
@@ -360,8 +360,8 @@ class SRv6Controller():
         # Success
         return srv6pmCommons_pb2.STATUS_SUCCESS
 
-    def __destroy_uni_srv6_path(self, ingress, egress,
-                                destination, localseg=None):
+    def __destroy_uni_srv6_path(self, ingress, egress, destination,
+                                localseg=None, ignore_errors=False):
         """Destroy a unidirectional SRv6 tunnel from <ingress> to <egress>
 
         Parameters
@@ -381,6 +381,8 @@ class SRv6Controller():
             function on the egress node.
             If the argument 'localseg' isn't passed in, the End.DT6 function
             is not removed.
+        ignore_errors : bool, optional
+            Whether to ignore "No such process" errors or not (default is False)
         """
 
         # Get the gRPC channel of the ingress node
@@ -404,7 +406,11 @@ class SRv6Controller():
             failure_msg='Error in remove_srv6_path()'
         )
         # If an error occurred, abort the operation
-        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+        if res == srv6pmCommons_pb2.STATUS_NO_SUCH_PROCESS:
+            # If the 'ignore_errors' flag is set, continue
+            if not ignore_errors:
+                return res
+        elif res != srv6pmCommons_pb2.STATUS_SUCCESS:
             return res
         # Remove "Decapsulaton and Specific IPv6 Table Lookup" function
         # from the egress node <egress>
@@ -427,13 +433,18 @@ class SRv6Controller():
                 failure_msg='Error in remove_srv6_behavior()'
             )
             # If an error occurred, abort the operation
-            if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            if res == srv6pmCommons_pb2.STATUS_NO_SUCH_PROCESS:
+                # If the 'ignore_errors' flag is set, continue
+                if not ignore_errors:
+                    return res
+            elif res != srv6pmCommons_pb2.STATUS_SUCCESS:
                 return res
         # Success
         return srv6pmCommons_pb2.STATUS_SUCCESS
 
     def __destroy_srv6_path(self, node_l, node_r,
-                            dest_lr, dest_rl, localseg_lr, localseg_rl):
+                            dest_lr, dest_rl, localseg_lr, localseg_rl,
+                            ignore_errors=False):
         """Destroy a bidirectional SRv6 tunnel
 
         Parameters
@@ -462,24 +473,28 @@ class SRv6Controller():
             function for the SRv6 path from <node_r> to <node_l>.
             If the argument 'localseg_r' isn't passed in, the End.DT6 function
             is not removed.
+        ignore_errors : bool, optional
+            Whether to ignore "No such process" errors or not (default is False)
         """
 
-        # Create a unidirectional SRv6 tunnel from <node_l> to <node_r>
+        # Remove unidirectional SRv6 tunnel from <node_l> to <node_r>
         res = self.__destroy_uni_srv6_path(
             ingress=node_l,
             egress=node_r,
             destination=dest_lr,
-            localseg=localseg_lr
+            localseg=localseg_lr,
+            ignore_errors=ignore_errors
         )
         # If an error occurred, abort the operation
         if res != srv6pmCommons_pb2.STATUS_SUCCESS:
             return res
-        # Create a unidirectional SRv6 tunnel from <node_r> to <node_l>
+        # Remove unidirectional SRv6 tunnel from <node_r> to <node_l>
         res = self.__destroy_uni_srv6_path(
             ingress=node_r,
             egress=node_l,
             destination=dest_rl,
-            localseg=localseg_rl
+            localseg=localseg_rl,
+            ignore_errors=ignore_errors
         )
         # If an error occurred, abort the operation
         if res != srv6pmCommons_pb2.STATUS_SUCCESS:
@@ -725,7 +740,8 @@ class SRv6Controller():
                          padding_mbz, loss_measurement_mode,
                          interval_duration, delay_margin,
                          number_of_color, measure_id=None,
-                         send_refl_localseg=None, refl_send_localseg=None):
+                         send_refl_localseg=None, refl_send_localseg=None,
+                         force=False):
         """Start an experiment.
 
         Parameters
@@ -790,6 +806,10 @@ class SRv6Controller():
             reflector (default is None).
             If the argument 'send_localseg' isn't passed in, the seg6local
             End.DT6 route is not created.
+        force : bool, optional
+            If set, force the controller to start an experiment if a
+            SRv6 path for the destination already exists. The old SRv6 path
+            is replaced with the new one (default is False).
         """
 
         # Get a new measure ID, if it isn't passed in as argument
@@ -809,7 +829,21 @@ class SRv6Controller():
             sidlist_rl=refl_send_sidlist
         )
         # Check for errors
-        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+        # If the force flag is set and SRv6 path already exists, remove
+        # the old path before creating the new one
+        if res == srv6pmCommons_pb2.STATUS_FILE_EXISTS and force:
+            res = self.__destroy_srv6_path(
+                node_l=sender,
+                node_r=reflector,
+                dest_lr=send_refl_dest,
+                dest_rl=refl_send_dest,
+                localseg_lr=send_refl_localseg,
+                localseg_rl=refl_send_localseg,
+                ignore_errors=True
+            )
+            if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+                return res
+        elif res != srv6pmCommons_pb2.STATUS_SUCCESS:
             return res
         # Start measurement process
         res = self.__start_measurement(
@@ -971,7 +1005,7 @@ class SRv6Controller():
         grpc_port : int
             the port of the gRPC server
         secure : bool
-            define wheter to use SSL or not for the gRPC server
+            define whether to use SSL or not for the gRPC server
             (default is False)
         certificate : str
             the path of the server certificate required for the SSL
@@ -1038,7 +1072,7 @@ def __parse_arguments():
         '-g', '--grpc-client-port', dest='grpc_client_port', action='store',
         default=DEFAULT_GRPC_CLIENT_PORT, help='Port of the gRPC client'
     )
-    # Define wheter to use SSL or not for the gRPC client
+    # Define whether to use SSL or not for the gRPC client
     parser.add_argument(
         '-s', '--client-secure', action='store_true',
         help='Activate secure mode for the gRPC client',
@@ -1049,7 +1083,7 @@ def __parse_arguments():
         '-c', '--client-cert', dest='client_cert', action='store',
         default=DEFAULT_CLIENT_CERTIFICATE, help='Client certificate file'
     )
-    # Define wheter to use SSL or not for the gRPC server
+    # Define whether to use SSL or not for the gRPC server
     parser.add_argument(
         '-a', '--server-secure', action='store_true',
         help='Activate secure mode for the gRPC server',
@@ -1065,7 +1099,7 @@ def __parse_arguments():
         '-c', '--server-key', dest='client_cert', action='store',
         default=DEFAULT_SERVER_KEY, help='Server key file'
     )
-    # Define wheter to enable debug mode or not
+    # Define whether to enable debug mode or not
     parser.add_argument(
         '-d', '--debug', action='store_true', help='Activate debug logs'
     )
