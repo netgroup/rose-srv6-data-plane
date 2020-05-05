@@ -236,9 +236,9 @@ class SessionSender(Thread):
 
         # self.lock = Thread.Lock()
 
-        self.interval = 15 #TODO gestire da controller
-        self.margin = timedelta(milliseconds=3000) #TODO gestire da controller
-        self.numColor = 2 #TODO gestire da controller
+        self.interval = None
+        self.margin = None
+        self.numColor = None
         self.hwadapter = driver
         self.scheduler = sched.scheduler(time.time, time.sleep)
         #self.startMeas("fcff:3::1/fcff:4::1/fcff:5::1","fcff:4::1/fcff:3::1/fcff:2::1","#test")
@@ -360,7 +360,7 @@ class SessionSender(Thread):
         
 
     ''' Interface for the controller'''
-    def startMeas(self, meas_id,sidList,revSidList):
+    def startMeas(self, meas_id,sidList,revSidList, interval, margin, num_color):
         if self.startedMeas:
             return -1 # already started
         print("SESSION SENDER: Start Meas for "+sidList)
@@ -373,6 +373,10 @@ class SessionSender(Thread):
         self.monitored_path["meas_counter"] = 1 #reset counter
         self.monitored_path["txSequenceNumber"] = 1 #
         self.monitored_path['lastMeas'] = {}
+        # Set color options
+        self.interval = interval
+        self.margin = timedelta(milliseconds=margin)
+        self.numColor = num_color
         
         self.hwadapter.set_sidlist_out(self.monitored_path["sidlist"])
         self.hwadapter.set_sidlist_in(self.monitored_path["returnsidlist"])
@@ -386,6 +390,10 @@ class SessionSender(Thread):
         self.hwadapter.rem_sidlist_out(self.monitored_path["sidlist"])
         self.hwadapter.rem_sidlist_in(self.monitored_path["returnsidlist"])
         self.monitored_path={}
+        # Clear color options
+        self.interval = None
+        self.margin = None
+        self.numColor = None
         return 1 #mettere in un try e semmai tronare errore
 
 
@@ -436,9 +444,9 @@ class SessionReflector(Thread):
         Thread.__init__(self)
         self.name = "SessionReflector"
         self.startedMeas = False
-        self.interval = 15 #TODO gestire da controller
-        self.margin = timedelta(milliseconds=3000) #TODO gestire da controller
-        self.numColor = 2 #TODO gestire da controller
+        self.interval = None
+        self.margin = None
+        self.numColor = None
 
         self.monitored_path = {}
 
@@ -537,7 +545,7 @@ class SessionReflector(Thread):
 
     ''' Interface for the controller'''
 
-    def startMeas(self, sidList,revSidList):
+    def startMeas(self, sidList,revSidList, interval, margin, num_color):
         if self.startedMeas:
             return -1 # already started
         print("REFLECTOR: Start Meas for "+sidList)
@@ -548,6 +556,10 @@ class SessionReflector(Thread):
         self.monitored_path["returnsidlist"] = revSidList.split("/")   
         self.monitored_path["returnsidlistrev"] = self.monitored_path["returnsidlist"][::-1]
         self.monitored_path["revTxSequenceNumber"] = 0 
+        # Set color options
+        self.interval = interval
+        self.margin = timedelta(milliseconds=margin)
+        self.numColor = num_color
         #pprint.pprint(self.monitored_path)
         self.hwadapter.set_sidlist_in(self.monitored_path["sidlist"])
         self.hwadapter.set_sidlist_out(self.monitored_path["returnsidlist"])
@@ -559,6 +571,10 @@ class SessionReflector(Thread):
         self.hwadapter.rem_sidlist_in(self.monitored_path["sidlist"])
         self.hwadapter.rem_sidlist_out(self.monitored_path["returnsidlist"])
         self.monitored_path={}
+        # Clear color options
+        self.interval = None
+        self.margin = None
+        self.numColor = None
         return 1 #mettere in un try e semmai tornare errore
 
 
@@ -609,7 +625,14 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
 
     def startExperimentSender(self, request, context):
         print("GRPC CONTROLLER: startExperimentSender")
-        res = self.sender.startMeas(request.measure_id,request.sdlist,request.sdlistreverse)
+        res = self.sender.startMeas(
+            meas_id=request.measure_id,
+            sidList=request.sdlist,
+            revSidList=request.sdlistreverse
+            interval=request.color_options.interval_duration,
+            margin=request.color_options.delay_margin,
+            num_color=request.color_options.numbers_of_color
+        )
         if res == 1:
             status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS') 
         else:
@@ -624,7 +647,13 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
 
     def startExperimentReflector(self, request, context):
         print("GRPC CONTROLLER: startExperimentReflector")
-        self.reflector.startMeas(request.sdlist,request.sdlistreverse)
+        self.reflector.startMeas(
+            sidList=request.sdlist,
+            revSidList=request.sdlistreverse
+            interval=request.color_options.interval_duration,
+            margin=request.color_options.delay_margin,
+            num_color=request.color_options.numbers_of_color
+        )
         status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
         return srv6pmReflector_pb2.StartExperimentReflectorReply(status=status)
 
