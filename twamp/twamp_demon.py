@@ -116,7 +116,7 @@ class IpSetInterf():
         self.BLUE=1
         self.RED=0
         self.state = self.BLUE # base conf use blue queue
-    
+
     def sid_list_converter(self,sid_list):
         return " ".join(sid_list)
 
@@ -139,8 +139,8 @@ class IpSetInterf():
         else:
             self.set_red_queue()
             self.state = self.RED
-    
-    def set_red_queue(self):             
+
+    def set_red_queue(self):
         #print('IPSET RED QUEUE')
         cmd = "ip6tables -D POSTROUTING -t mangle -m rt --rt-type 4 -j blue-out"
         shlex.split(cmd)
@@ -176,7 +176,7 @@ class IpSetInterf():
         queue_name = self.get_queue_name(color,"in")
         #print('IPSET READ RX COUNTER', color, ipset_sid_list,queue_name)
         result = subprocess.run(['ipset', 'list',queue_name], stdout=subprocess.PIPE)
-        res_arr = result.stdout.decode('utf-8').splitlines();
+        res_arr = result.stdout.decode('utf-8').splitlines()
 
         if not res_arr[0].startswith("Name:"):
             raise Exception('Queue not present')
@@ -189,7 +189,7 @@ class IpSetInterf():
                     return int(cnt)
 
         raise Exception('SID list not present')
-    
+
     def get_queue_name(self,color,direction):
         if(color==self.BLUE):
             return 'blue-ht-'+direction
@@ -201,12 +201,13 @@ class IpSetInterf():
 
 class TestPacketReceiver(Thread):
     def __init__(self, interface, sender, reflector ):
-        Thread.__init__(self) 
+        Thread.__init__(self)
         self.interface = interface
         self.SessionSender = sender
         self.SessionReflector = reflector
 
     def packetRecvCallback(self, packet):
+        #TODO passate dal controller per connessione!!!
         if UDP in packet:
             if packet[UDP].dport==1205:
                 packet[UDP].decode_payload_as(twamp.TWAMPTestQuery)
@@ -218,7 +219,7 @@ class TestPacketReceiver(Thread):
                 self.SessionSender.recvTWAMPResponse(packet)
             else:
                 print(packet.show())
-    
+
     def run(self):
         print("TestPacketReceiver Start sniffing...")
         sniff(iface=self.interface, filter="ip6", prn=self.packetRecvCallback)
@@ -236,9 +237,9 @@ class SessionSender(Thread):
 
         # self.lock = Thread.Lock()
 
-        self.interval = None
-        self.margin = None
-        self.numColor = None
+        self.interval = 15
+        self.margin = timedelta(milliseconds=3000)
+        self.numColor = 2
         self.hwadapter = driver
         self.scheduler = sched.scheduler(time.time, time.sleep)
         #self.startMeas("fcff:3::1/fcff:4::1/fcff:5::1","fcff:4::1/fcff:3::1/fcff:2::1","#test")
@@ -303,17 +304,17 @@ class SessionSender(Thread):
             #print(datetime.now(),"SS runChangeColor meas:",self.startedMeas)
             color = self.getColor()
             self.hwadapter.set_color(color)
-        
+
         ccTime =time.mktime(self.getNexttimeToChangeColor().timetuple())
         self.scheduler.enterabs(ccTime, 1, self.runChangeColor)
 
 
     def runMeasure(self):
-        if self.startedMeas:                
+        if self.startedMeas:
             #print(datetime.now(),"SS runMeasure meas:",self.startedMeas)
             self.sendTWAMPTestQuery()
 
-        # Schedule next measure 
+        # Schedule next measure
         dmTime =time.mktime(self.getNexttimeToMeasure().timetuple())
         self.scheduler.enterabs(dmTime, 1, self.runMeasure)
 
@@ -324,7 +325,7 @@ class SessionSender(Thread):
             # Get the counter for the color of the previuos interval
             senderBlockNumber = self.getPrevColor()
             senderTransmitCounter = self.hwadapter.read_tx_counter(senderBlockNumber,self.monitored_path["sidlist"])
-            
+
 
             ipv6_packet = IPv6()
             ipv6_packet.src = "fcff:2::1" #TODO me li da il controller?
@@ -332,7 +333,7 @@ class SessionSender(Thread):
 
             mod_sidlist = self.set_punt(list(self.monitored_path["sidlistrev"]))
 
-            srv6_header = IPv6ExtHdrSegmentRouting() 
+            srv6_header = IPv6ExtHdrSegmentRouting()
             srv6_header.addresses = mod_sidlist
             srv6_header.segleft = len(mod_sidlist)-1 #TODO vedere se funziona con NS variabile
             srv6_header.lastentry = len(mod_sidlist)-1 #TODO vedere se funziona con NS variabile
@@ -344,15 +345,15 @@ class SessionSender(Thread):
             udp_packet = UDP()
             udp_packet.dport = 1205 #TODO  me li da il controller?
             udp_packet.sport = 1206 #TODO  me li da il controller?
-        
+
             #in band response TODO gestire out band nel controller
             senderControlCode = 1
             senderSeqNum = self.monitored_path["txSequenceNumber"];
 
-            twamp_data = twamp.TWAMPTestQuery(  SequenceNumber=senderSeqNum, 
+            twamp_data = twamp.TWAMPTestQuery(  SequenceNumber=senderSeqNum,
                                                 TransmitCounter=senderTransmitCounter,
                                                 BlockNumber=senderBlockNumber,
-                                                SenderControlCode=senderControlCode) 
+                                                SenderControlCode=senderControlCode)
 
             pkt = ipv6_packet / srv6_header / ipv6_packet_inside / udp_packet / twamp_data
 
@@ -375,7 +376,7 @@ class SessionSender(Thread):
         resp = packet[twamp.TWAMPTestResponse]
 
 
-        # Read the RX counter FW path       
+        # Read the RX counter FW path
         nopunt_sid_list = self.rem_punt(sid_list)[::-1] #no punt and reversed
         ssReceiveCounter = self.hwadapter.read_rx_counter(resp.BlockNumber,nopunt_sid_list)
 
@@ -398,7 +399,7 @@ class SessionSender(Thread):
         self.monitored_path['lastMeas']['rfTXc']=resp.TransmitCounter
         self.monitored_path['lastMeas']['ssRXc']=ssReceiveCounter
         self.monitored_path['lastMeas']['rvColor']=resp.BlockNumber
-        
+
 
     ''' Interface for the controller'''
     def startMeas(self, meas_id,sidList,revSidList, interval, margin, num_color):
@@ -409,7 +410,7 @@ class SessionSender(Thread):
         self.monitored_path["sidlistgrpc"] = sidList
         self.monitored_path["sidlist"] = sidList.split("/")
         self.monitored_path["sidlistrev"] = self.monitored_path["sidlist"][::-1]
-        self.monitored_path["returnsidlist"] = revSidList.split("/")   
+        self.monitored_path["returnsidlist"] = revSidList.split("/")
         self.monitored_path["returnsidlistrev"] = self.monitored_path["returnsidlist"][::-1]
         self.monitored_path["meas_counter"] = 1 #reset counter
         self.monitored_path["txSequenceNumber"] = 1 #
@@ -418,7 +419,7 @@ class SessionSender(Thread):
         self.interval = interval
         self.margin = timedelta(milliseconds=margin)
         self.numColor = num_color
-        
+
         self.hwadapter.set_sidlist_out(self.monitored_path["sidlist"])
         self.hwadapter.set_sidlist_in(self.monitored_path["returnsidlist"])
         self.startedMeas = True
@@ -432,9 +433,9 @@ class SessionSender(Thread):
         self.hwadapter.rem_sidlist_in(self.monitored_path["returnsidlist"])
         self.monitored_path={}
         # Clear color options
-        self.interval = None
-        self.margin = None
-        self.numColor = None
+        # self.interval = None
+        # self.margin = None
+        # self.numColor = None
         return 1 #mettere in un try e semmai tronare errore
 
 
@@ -485,9 +486,9 @@ class SessionReflector(Thread):
         Thread.__init__(self)
         self.name = "SessionReflector"
         self.startedMeas = False
-        self.interval = None
-        self.margin = None
-        self.numColor = None
+        self.interval = 15
+        self.margin = timedelta(milliseconds=3000)
+        self.numColor = 2
 
         self.monitored_path = {}
 
@@ -511,7 +512,7 @@ class SessionReflector(Thread):
             #print(datetime.now(),"RF runChangeColor meas:",self.startedMeas)
             color = self.getColor()
             self.hwadapter.set_color(color)
-        
+
         ccTime =time.mktime(self.getNexttimeToChangeColor().timetuple())
         self.scheduler.enterabs(ccTime, 1, self.runChangeColor)
 
@@ -519,20 +520,20 @@ class SessionReflector(Thread):
 
     def sendTWAMPTestResponse(self, sid_list, sender_block_color, sender_counter,sender_seq_num):
 
-        # Read the RX counter FW path       
+        # Read the RX counter FW path
         nopunt_sid_list = self.rem_punt(sid_list)[::-1] #no punt and reversed
         rfReceiveCounter = self.hwadapter.read_rx_counter(sender_block_color,nopunt_sid_list)
 
-        # Reverse path 
+        # Reverse path
         rfBlockNumber = self.getPrevColor()
         rfTransmitCounter = self.hwadapter.read_tx_counter(rfBlockNumber,self.monitored_path["returnsidlist"])
-        
+
         ipv6_packet = IPv6()
         ipv6_packet.src = "fcff:5::1" #TODO  me li da il controller?
         ipv6_packet.dst = "fcff:4::1" #TODO  me li da il controller?
 
         mod_sidlist = self.set_punt(list(self.monitored_path["returnsidlistrev"]))
-        srv6_header = IPv6ExtHdrSegmentRouting() 
+        srv6_header = IPv6ExtHdrSegmentRouting()
         srv6_header.addresses = mod_sidlist
         srv6_header.segleft = len(mod_sidlist)-1 #TODO vedere se funziona con NS variabile
         srv6_header.lastentry = len(mod_sidlist)-1 #TODO vedere se funziona con NS variabile
@@ -544,14 +545,14 @@ class SessionReflector(Thread):
         udp_packet = UDP()
         udp_packet.dport = 1206 #TODO  me li da il controller?
         udp_packet.sport = 1205 #TODO  me li da il controller?
-    
+
         # Response sequence number
         rfSequenceNumber = self.monitored_path["revTxSequenceNumber"]
-    
-        # Response control code
-        rfReceverControlCode = 0 
 
-        twamp_data = twamp.TWAMPTestResponse(SequenceNumber=rfSequenceNumber, 
+        # Response control code
+        rfReceverControlCode = 0
+
+        twamp_data = twamp.TWAMPTestResponse(SequenceNumber=rfSequenceNumber,
                                 TransmitCounter=rfTransmitCounter,
                                 BlockNumber=rfBlockNumber,
                                 ReceiveCounter=rfReceiveCounter,
@@ -561,9 +562,9 @@ class SessionReflector(Thread):
                                 ReceverControlCode=rfReceverControlCode)
 
         pkt = ipv6_packet / srv6_header / ipv6_packet_inside / udp_packet / twamp_data
-        
-        scapy.all.send(pkt, count=1, verbose=False)    
-        # Increse the SequenceNumber 
+
+        scapy.all.send(pkt, count=1, verbose=False)
+        # Increse the SequenceNumber
         self.monitored_path["revTxSequenceNumber"] += 1
 
         print("RF - SEND RESP SL {sl} - SN {sn} - TXC {txc} - C {col} - RC {rc}".format(sl=mod_sidlist,
@@ -571,7 +572,7 @@ class SessionReflector(Thread):
                                                                                txc=rfTransmitCounter,
                                                                                col=rfBlockNumber,
                                                                                rc=rfReceiveCounter))
-        
+
 
     def recvTWAMPTestQuery(self,packet):
         # TODO controllare che la sidlist è quella che sto monitorando (levando il punt)
@@ -594,9 +595,9 @@ class SessionReflector(Thread):
         self.monitored_path["sidlistgrpc"] = sidList
         self.monitored_path["sidlist"] = sidList.split("/")
         self.monitored_path["sidlistrev"] = self.monitored_path["sidlist"][::-1]
-        self.monitored_path["returnsidlist"] = revSidList.split("/")   
+        self.monitored_path["returnsidlist"] = revSidList.split("/")
         self.monitored_path["returnsidlistrev"] = self.monitored_path["returnsidlist"][::-1]
-        self.monitored_path["revTxSequenceNumber"] = 0 
+        self.monitored_path["revTxSequenceNumber"] = 0
         # Set color options
         self.interval = interval
         self.margin = timedelta(milliseconds=margin)
@@ -613,9 +614,9 @@ class SessionReflector(Thread):
         self.hwadapter.rem_sidlist_out(self.monitored_path["returnsidlist"])
         self.monitored_path={}
         # Clear color options
-        self.interval = None
-        self.margin = None
-        self.numColor = None
+        # self.interval = None
+        # self.margin = None
+        # self.numColor = None
         return 1 #mettere in un try e semmai tornare errore
 
 
@@ -655,12 +656,12 @@ class SessionReflector(Thread):
         return mod_list
 
 
-'''##################################### GRPC CONTROLLER''' 
+'''##################################### GRPC CONTROLLER'''
 
 
 class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
-    def __init__(self, SessionSender,SessionReflector): 
-        self.port_server = 20000 
+    def __init__(self, SessionSender,SessionReflector):
+        self.port_server = 20000
         self.sender = SessionSender
         self.reflector = SessionReflector
 
@@ -675,9 +676,9 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
             num_color=request.color_options.numbers_of_color
         )
         if res == 1:
-            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS') 
+            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
         else:
-            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_INTERNAL_ERROR') 
+            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_INTERNAL_ERROR')
         return srv6pmSender_pb2.StartExperimentSenderReply(status=status)
 
     def stopExperimentSender(self, request, context):
@@ -707,11 +708,11 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
     def retriveExperimentResults(self, request, context):
         print("GRPC CONTROLLER: retriveExperimentResults")
         lastMeas,meas_id = self.sender.getMeas(request.sdlist)
-        
+
         if bool(lastMeas):
             response = srv6pmCommons_pb2.ExperimentDataResponse()
+            response.status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
             data = response.measurement_data.add()
-            data.status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
             data.meas_id = meas_id
             data.ssSeqNum = lastMeas['sssn']
             data.ssTxCounter = lastMeas['ssTXc']
@@ -720,12 +721,12 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
 
             data.rfSeqNum = lastMeas['rfsn']
             data.rfTxCounter = lastMeas['rfTXc']
-            data.ssRxCounter = lastMeas['ssRXc'] 
+            data.ssRxCounter = lastMeas['ssRXc']
             data.rvColor = lastMeas['rvColor']
         else:
-            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_INTERNAL_ERROR') 
+            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_INTERNAL_ERROR')
             response = srv6pmCommons_pb2.ExperimentDataResponse(status=status)
-        
+
         return response
 
 
@@ -744,7 +745,8 @@ def serve(ipaddr,gprcPort,recvInterf,epbfOutInterf,epbfInInterf):
     srv6pmService_pb2_grpc.add_SRv6PMServicer_to_server(TWAMPController(sessionsender,sessionreflector), server)
     srv6_manager_pb2_grpc.add_SRv6ManagerServicer_to_server(
         SRv6Manager(), server)
-    server.add_insecure_port("[{ip}]:{port}".format(ip=ipaddr,port=gprcPort))
+    #server.add_insecure_port("[{ip}]:{port}".format(ip=ipaddr,port=gprcPort))
+    server.add_insecure_port("{ip}:{port}".format(ip=ipaddr,port=gprcPort))
     print("\n-------------- Start Demon --------------\n")
     server.start()
     server.wait_for_termination()
@@ -754,11 +756,11 @@ if __name__ == '__main__':
     ipaddr =  sys.argv[1]
     gprcPort =  sys.argv[2]
     nodeID =  sys.argv[3]
-    if nodeID=="2":
+    if nodeID=="E":
         recvInterf = "veth-punt1"
         epbfOutInterf = "veth3-egr"
         epbfInInterf = "veth3"
-    elif nodeID=="5":
+    elif nodeID=="D":
         recvInterf = "veth-punt2"
         epbfOutInterf = "veth8-egr"
         epbfInInterf = "veth8"

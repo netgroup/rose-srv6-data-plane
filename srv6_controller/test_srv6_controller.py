@@ -12,14 +12,14 @@ def start_experiment(controller):
 
     # Start the experiment
     controller.start_experiment(
-        sender='fcff:3::1',
-        reflector='fcff:2::1',
-        send_refl_dest='fd00:0:32::/64',
-        refl_send_dest='fd00:0:23::/64',
-        send_refl_sidlist=['fcff:2::1', 'fcff:2::100'],
-        refl_send_sidlist=['fcff:3::1', 'fcff:3::100'],
-        send_refl_localseg='fcff:2::100',
-        refl_send_localseg='fcff:3::100',
+        sender='10.1.1.1',
+        reflector='10.1.1.2',
+        send_refl_dest='fcff:5::1',
+        refl_send_dest='fcff:2::1',
+        send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:5::1'],
+        refl_send_sidlist=['fcff:4::1', 'fcff:3::1', 'fcff:2::1'],
+        send_refl_localseg='fcff:3::1',
+        refl_send_localseg='fcff:2::1',
         send_in_interfaces=[],
         refl_in_interfaces=[],
         send_out_interfaces=[],
@@ -35,8 +35,8 @@ def start_experiment(controller):
         padding_mbz=10,
         loss_measurement_mode='Inferred',
         interval_duration=10,
-        delay_margin=10,
-        number_of_color=3
+        delay_margin=5,  # sec assert(<interval)
+        number_of_color=2  # sec assert(==2)
     )
 
 
@@ -79,10 +79,10 @@ def get_experiment_results(controller):
 
     # Get the results
     results = controller.get_experiment_results(
-        sender='fcff:3::1',
-        reflector='fcff:2::1',
-        send_refl_sidlist=['fcff:2::1', 'fcff:2::100'],
-        refl_send_sidlist=['fcff:3::1', 'fcff:3::100']
+        sender='10.1.1.1',
+        reflector='10.1.1.2',
+        send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:5::1'],
+        refl_send_sidlist=['fcff:4::1', 'fcff:3::1', 'fcff:2::1'],
     )
     # Check for errors
     if results is None:
@@ -128,9 +128,9 @@ if __name__ == "__main__":
     # IP address of the gRPC server
     grpc_server_ip = '::'
     # Port of the gRPC server
-    grpc_server_port = 12345
+    grpc_server_port = 50052
     # Port of the gRPC client
-    grpc_client_port = 12345
+    grpc_client_port = 50052
     # Create a new SRv6 Controller
     controller = SRv6Controller(
         grpc_server_ip=grpc_server_ip,
@@ -141,7 +141,8 @@ if __name__ == "__main__":
     # Start a new experiment
     print()
     print()
-    start_experiment_no_measure_id(controller)
+    # start_experiment_no_measure_id(controller)
+    start_experiment(controller)
     # Collects results
     for i in range(3):
         # Wait for 10 seconds
