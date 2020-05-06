@@ -328,7 +328,7 @@ class SessionSender(Thread):
 
 
             ipv6_packet = IPv6()
-            ipv6_packet.src = "fcff:2::1" #TODO me li da il controller?
+            ipv6_packet.src = "fcff:1::1" #TODO me li da il controller?
             ipv6_packet.dst = "fcff:3::1" #TODO  me li da il controller?
 
             mod_sidlist = self.set_punt(list(self.monitored_path["sidlistrev"]))
@@ -339,8 +339,8 @@ class SessionSender(Thread):
             srv6_header.lastentry = len(mod_sidlist)-1 #TODO vedere se funziona con NS variabile
 
             ipv6_packet_inside = IPv6()
-            ipv6_packet_inside.src = "fcff:2::1" #TODO  me li da il controller?
-            ipv6_packet_inside.dst = "fcff:5::1" #TODO  me li da il controller?
+            ipv6_packet_inside.src = "fd00:0:13::1" #TODO  me li da il controller?
+            ipv6_packet_inside.dst = "fd00:0:83::1" #TODO  me li da il controller?
 
             udp_packet = UDP()
             udp_packet.dport = 1205 #TODO  me li da il controller?
@@ -348,7 +348,7 @@ class SessionSender(Thread):
 
             #in band response TODO gestire out band nel controller
             senderControlCode = 1
-            senderSeqNum = self.monitored_path["txSequenceNumber"];
+            senderSeqNum = self.monitored_path["txSequenceNumber"]
 
             twamp_data = twamp.TWAMPTestQuery(  SequenceNumber=senderSeqNum,
                                                 TransmitCounter=senderTransmitCounter,
@@ -423,8 +423,7 @@ class SessionSender(Thread):
         self.hwadapter.set_sidlist_out(self.monitored_path["sidlist"])
         self.hwadapter.set_sidlist_in(self.monitored_path["returnsidlist"])
         self.startedMeas = True
-        status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
-        return status #mettere in un try e semmai tronare errore
+        return 1 #mettere in un try e semmai tronare errore
 
     def stopMeas(self, sidList):
         print("SESSION SENDER: Stop Meas for "+sidList)
@@ -470,12 +469,12 @@ class SessionSender(Thread):
 
     def set_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0][:-3]+"200"
+        mod_list[0]=mod_list[0][:-1]+"200"
         return mod_list
 
     def rem_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0][:-3]+"100"
+        mod_list[0]=mod_list[0][:-3]+"1"
         return mod_list
 
 
@@ -647,12 +646,12 @@ class SessionReflector(Thread):
 
     def set_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0][:-3]+"200"
+        mod_list[0]=mod_list[0][:-1]+"200"
         return mod_list
 
     def rem_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0][:-3]+"100"
+        mod_list[0]=mod_list[0][:-3]+"1"
         return mod_list
 
 
@@ -745,8 +744,8 @@ def serve(ipaddr,gprcPort,recvInterf,epbfOutInterf,epbfInInterf):
     srv6pmService_pb2_grpc.add_SRv6PMServicer_to_server(TWAMPController(sessionsender,sessionreflector), server)
     srv6_manager_pb2_grpc.add_SRv6ManagerServicer_to_server(
         SRv6Manager(), server)
-    #server.add_insecure_port("[{ip}]:{port}".format(ip=ipaddr,port=gprcPort))
-    server.add_insecure_port("{ip}:{port}".format(ip=ipaddr,port=gprcPort))
+    server.add_insecure_port("[{ip}]:{port}".format(ip=ipaddr,port=gprcPort))
+    #server.add_insecure_port("{ip}:{port}".format(ip=ipaddr,port=gprcPort))
     print("\n-------------- Start Demon --------------\n")
     server.start()
     server.wait_for_termination()

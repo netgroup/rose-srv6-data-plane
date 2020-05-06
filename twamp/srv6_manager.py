@@ -105,6 +105,7 @@ class SRv6Manager(srv6_manager_pb2_grpc.SRv6ManagerServicer):
                     segments = []
                     for srv6_segment in path.sr_path:
                         segments.append(srv6_segment.segment)
+                    segments.reverse()
                     table = path.table
                     if path.table == -1:
                         table = None
@@ -224,6 +225,7 @@ class SRv6Manager(srv6_manager_pb2_grpc.SRv6ManagerServicer):
                         segments = []
                         for srv6_segment in behavior.segs:
                             segments.append(srv6_segment.segment)
+                        segments.reverse()
                         self.ip_route.route(op, family=AF_INET6, dst=segment,
                                             oif=self.interface_to_idx[device],
                                             table=localsid_table,
