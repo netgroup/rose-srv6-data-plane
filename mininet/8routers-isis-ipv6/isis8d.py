@@ -2,8 +2,9 @@
 
 import os
 import shutil
+from ipaddress import IPv6Network
 from mininet.topo import Topo
-from mininet.node import Host
+from mininet.node import Host, OVSBridge
 from mininet.net import Mininet
 from mininet.cli import CLI
 from mininet.util import dumpNodeConnections
@@ -15,6 +16,22 @@ BASEDIR = os.getcwd()+"/nodeconf/"
 OUTPUT_PID_TABLE_FILE = "/tmp/pid_table_file.txt"
 
 PRIVDIR = '/var/priv'
+
+
+# Allocates mgmt address
+class MgmtAllocator(object):
+
+  bit = 64
+  net = unicode("2000::/%d" % bit)
+  prefix = 64
+
+  def __init__(self): 
+    print "*** Calculating Available Mgmt Addresses"
+    self.mgmtnet = (IPv6Network(self.net)).hosts()
+  
+  def nextMgmtAddress(self):
+    n_host = next(self.mgmtnet)
+    return n_host.__str__()
 
 class BaseNode(Host):
 
@@ -35,13 +52,13 @@ class BaseNode(Host):
             # Remove any configured address
             self.cmd('ifconfig %s 0' %intf.name)
             # # For the first one, let's configure the mgmt address
-            # if first:
-            #   first = False
-            #   self.cmd('ip a a %s dev %s' %(kwargs['mgmtip'], intf.name))
+            if first:
+               first = False
+               self.cmd('ip a a %s dev %s' %(kwargs['mgmtip'], intf.name))
         #let's write the hostname in /var/mininet/hostname
         self.cmd("echo '" + self.name + "' > "+PRIVDIR+"/hostname")
         if os.path.isfile(BASEDIR+self.name+"/start.sh") :
-            self.cmd('source %s' %BASEDIR+self.name+"/start.sh")
+            self.cmdPrint('source %s' %BASEDIR+self.name+"/start.sh")
 
     def cleanup(self):
         def remove_if_exists (filename):
@@ -88,35 +105,60 @@ class Router(BaseNode):
 
 # the add_link function creates a link and assigns the interface names
 # as node1-node2 and node2-node1
-def add_link (node1, node2):
-    Link(node1, node2, intfName1=node1.name+'-'+node2.name,
-                       intfName2=node2.name+'-'+node1.name)
+def add_link (node1, node2, assign_names=True):
+    if assign_names:
+        Link(node1, node2, intfName1=node1.name+'-'+node2.name,
+                        intfName2=node2.name+'-'+node1.name)
+    else:
+        Link(node1, node2)
 
 def create_topo(my_net):
-    h11 = my_net.addHost(name='h11', cls=BaseNode)
-    h12 = my_net.addHost(name='h12', cls=BaseNode)
-    h13 = my_net.addHost(name='h13', cls=BaseNode)
+    allocator = MgmtAllocator()
 
-    h31 = my_net.addHost(name='h31', cls=BaseNode)
-    h32 = my_net.addHost(name='h32', cls=BaseNode)
-    h33 = my_net.addHost(name='h33', cls=BaseNode)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h11 = my_net.addHost(name='h11', cls=BaseNode, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h12 = my_net.addHost(name='h12', cls=BaseNode, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h13 = my_net.addHost(name='h13', cls=BaseNode, mgmtip=mgmtip)
 
-    h51 = my_net.addHost(name='h51', cls=BaseNode)
-    h52 = my_net.addHost(name='h52', cls=BaseNode)
-    h53 = my_net.addHost(name='h53', cls=BaseNode)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h31 = my_net.addHost(name='h31', cls=BaseNode, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h32 = my_net.addHost(name='h32', cls=BaseNode, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h33 = my_net.addHost(name='h33', cls=BaseNode, mgmtip=mgmtip)
 
-    h81 = my_net.addHost(name='h81', cls=BaseNode)
-    h82 = my_net.addHost(name='h82', cls=BaseNode)
-    h83 = my_net.addHost(name='h83', cls=BaseNode)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h51 = my_net.addHost(name='h51', cls=BaseNode, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h52 = my_net.addHost(name='h52', cls=BaseNode, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h53 = my_net.addHost(name='h53', cls=BaseNode, mgmtip=mgmtip)
 
-    r1 = my_net.addHost(name='r1', cls=Router)
-    r2 = my_net.addHost(name='r2', cls=Router)
-    r3 = my_net.addHost(name='r3', cls=Router)
-    r4 = my_net.addHost(name='r4', cls=Router)
-    r5 = my_net.addHost(name='r5', cls=Router)
-    r6 = my_net.addHost(name='r6', cls=Router)
-    r7 = my_net.addHost(name='r7', cls=Router)
-    r8 = my_net.addHost(name='r8', cls=Router)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h81 = my_net.addHost(name='h81', cls=BaseNode, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h82 = my_net.addHost(name='h82', cls=BaseNode, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    h83 = my_net.addHost(name='h83', cls=BaseNode, mgmtip=mgmtip)
+
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    r1 = my_net.addHost(name='r1', cls=Router, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    r2 = my_net.addHost(name='r2', cls=Router, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    r3 = my_net.addHost(name='r3', cls=Router, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    r4 = my_net.addHost(name='r4', cls=Router, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    r5 = my_net.addHost(name='r5', cls=Router, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    r6 = my_net.addHost(name='r6', cls=Router, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    r7 = my_net.addHost(name='r7', cls=Router, mgmtip=mgmtip)
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    r8 = my_net.addHost(name='r8', cls=Router, mgmtip=mgmtip)
 
     #note that if the interface names are not provided,
     #the order of adding link will determine the
@@ -125,6 +167,21 @@ def create_topo(my_net):
     # Link(h1, r1, intfName1='h1-eth0', intfName2='r1-eth0')
     # the add_link function creates a link and assigns the interface names
     # as node1-node2 and node2-node1
+
+    # Create the mgmt switch
+    br_mgmt = my_net.addSwitch(name='br-mgmt1', cls=OVSBridge)
+    # Mgmt name
+    mgmt = 'mgmt'
+    # IP of the management station
+    mgmtip = "%s/%s" % (allocator.nextMgmtAddress(), MgmtAllocator.prefix)
+    # Create the mgmt node in the root namespace
+    mgmt = my_net.addHost(name=mgmt, cls=BaseNode, sshd=False, inNamespace=False, mgmtip=mgmtip)
+    # Create a link between mgmt switch and mgmt station
+    add_link(mgmt, br_mgmt, False)
+    # Connect all the routers to the management network
+    for host in my_net.hosts:
+        if host.inNamespace:
+            add_link(host, br_mgmt, False)
 
     #hosts of r1
     add_link(h11,r1)
@@ -180,14 +237,13 @@ def simpleTest():
 
     #topo = RoutersTopo()
     #net = Mininet(topo=topo, build=False, controller=None)
-    net = Mininet(topo=None, build=False, controller=None)
+    net = Mininet(topo=None, build=False, controller=None, ipBase='172.16.0.0/12')
     create_topo(net)
 
     net.build()
     net.start()
 
 
-    print "Dumping host connections"
     dumpNodeConnections(net.hosts)
     #print "Testing network connectivity"
     #net.pingAll()
