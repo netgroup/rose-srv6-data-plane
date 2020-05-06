@@ -818,6 +818,19 @@ class SRv6Controller():
         if measure_id is None:
             self.measure_id += 1
             measure_id = self.measure_id
+        # If the force flag is set and SRv6 path already exists, remove
+        # the old path before creating the new one
+        res = self.__destroy_srv6_path(
+            node_l=sender,
+            node_r=reflector,
+            dest_lr=send_refl_dest,
+            dest_rl=refl_send_dest,
+            localseg_lr=send_refl_localseg,
+            localseg_rl=refl_send_localseg,
+            ignore_errors=True
+        )
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
+            return res
         # Create a bidirectional SRv6 tunnel between the sender and the
         # reflector
         res = self.__create_srv6_path(
@@ -831,21 +844,7 @@ class SRv6Controller():
             sidlist_rl=refl_send_sidlist
         )
         # Check for errors
-        # If the force flag is set and SRv6 path already exists, remove
-        # the old path before creating the new one
-        if res == srv6pmCommons_pb2.STATUS_FILE_EXISTS and force:
-            res = self.__destroy_srv6_path(
-                node_l=sender,
-                node_r=reflector,
-                dest_lr=send_refl_dest,
-                dest_rl=refl_send_dest,
-                localseg_lr=send_refl_localseg,
-                localseg_rl=refl_send_localseg,
-                ignore_errors=True
-            )
-            if res != srv6pmCommons_pb2.STATUS_SUCCESS:
-                return res
-        elif res != srv6pmCommons_pb2.STATUS_SUCCESS:
+        if res != srv6pmCommons_pb2.STATUS_SUCCESS:
             return res
         # Start measurement process
         res = self.__start_measurement(
