@@ -267,8 +267,10 @@ class SessionSender(Thread):
             reflector_rx_counter = random.randint(0, 50)
             # Create the gRPC request message
             request = srv6pmServiceController_pb2.SendMeasurementDataRequest()
-            data = request.measurement_data.add() data.measure_id = measure_id
-            data.interval = interval data.timestamp = timestamp
+            data = request.measurement_data.add()
+            data.measure_id = measure_id
+            data.interval = interval
+            data.timestamp = timestamp
             data.color = color
             data.sender_tx_counter = sender_tx_counter
             data.sender_rx_counter = sender_rx_counter
@@ -667,7 +669,7 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
         res = self.sender.startMeas(
             meas_id=request.measure_id,
             sidList=request.sdlist,
-            revSidList=request.sdlistreverse
+            revSidList=request.sdlistreverse,
             interval=request.color_options.interval_duration,
             margin=request.color_options.delay_margin,
             num_color=request.color_options.numbers_of_color
@@ -688,7 +690,7 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
         print("GRPC CONTROLLER: startExperimentReflector")
         self.reflector.startMeas(
             sidList=request.sdlist,
-            revSidList=request.sdlistreverse
+            revSidList=request.sdlistreverse,
             interval=request.color_options.interval_duration,
             margin=request.color_options.delay_margin,
             num_color=request.color_options.numbers_of_color
