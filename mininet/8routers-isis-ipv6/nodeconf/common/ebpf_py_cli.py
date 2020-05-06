@@ -3,7 +3,7 @@
 import os
 import sys
 
-sys.path.append(os.path.abspath("/opt/xdp_experiments/srv6-pfplm"))
+sys.path.append(os.path.abspath("/opt/srv6-pm-xdp-ebpf/srv6-pfplm"))
 
 from xdp_srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
 
