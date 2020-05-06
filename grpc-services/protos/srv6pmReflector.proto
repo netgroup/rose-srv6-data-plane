@@ -44,7 +44,7 @@ message StartExperimentReflectorReply {
 message ReflectorOptions {
     uint32 ss_udp_port = 1;
     uint32 refl_udp_port = 2;
-    MesurementProtocol mesurement_protocol = 3;
+    MeasurementProtocol measurement_protocol = 3;
     AuthenticationMode authentication_mode = 4;
     MeasurementType measurement_type = 5;
     MeasurementLossMode measurement_loss_mode = 6;
