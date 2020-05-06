@@ -243,6 +243,45 @@ class SessionSender(Thread):
         self.scheduler = sched.scheduler(time.time, time.sleep)
         #self.startMeas("fcff:3::1/fcff:4::1/fcff:5::1","fcff:4::1/fcff:3::1/fcff:2::1","#test")
 
+    def send_meas_data_to_controller(self):
+        # Controller IP and port
+        grpc_ip_controller = '2000::15'
+        grpc_port_controller = 12345
+        # Init random seed
+        random.seed(a=None, version=2)
+        # Colors
+        colors = ['red', 'yellow', 'green', 'white', 'purple']
+        # Loop until startedMeas == True
+        while True:
+            # Check if measurement process is started
+            if not self.startedMeas:
+                return
+            # Generate random data
+            measure_id = random.randint(0, 5)
+            interval = 10
+            timestamp = ''
+            color = random.choice(colors)
+            sender_tx_counter = random.randint(0, 50)
+            sender_rx_counter = random.randint(0, 50)
+            reflector_tx_counter = random.randint(0, 50)
+            reflector_rx_counter = random.randint(0, 50)
+            # Create the gRPC request message
+            request = srv6pmServiceController_pb2.SendMeasurementDataRequest()
+            data = request.measurement_data.add() data.measure_id = measure_id
+            data.interval = interval data.timestamp = timestamp
+            data.color = color
+            data.sender_tx_counter = sender_tx_counter
+            data.sender_rx_counter = sender_rx_counter
+            data.reflector_tx_counter = reflector_tx_counter
+            data.reflector_rx_counter = reflector_rx_counter
+            channel = grpc.insecure_channel('ipv6:[%s]:%s' % grpc_ip_controller, grpc_port_controller)
+            stub = srv6pmServiceController_pb2_grpc.SRv6PMControllerStub(channel)
+            # Send mesaurement data
+            res =stub.SendMeasurementData(request)
+            print('Sent data to the controller. Status code: %s' % res.status)
+            # Wait
+            time.sleep(self.margin)
+
     ''' Thread Tasks'''
 
     def run(self):
