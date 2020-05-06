@@ -115,9 +115,9 @@ def parse_grpc_error(e):
     return code
 
 
-def startExperimentSender(channel, in_sidlist, out_sidlist,
+def startExperimentSender(channel, sidlist, rev_sidlist,
                           in_interfaces, out_interfaces,
-                          measurement_protocol, dst_udp_port,
+                          measurement_protocol, send_udp_port, refl_udp_port,
                           measurement_type, authentication_mode, authentication_key,
                           timestamp_format, delay_measurement_mode,
                           padding_mbz, loss_measurement_mode, interval_duration,
@@ -127,15 +127,23 @@ def startExperimentSender(channel, in_sidlist, out_sidlist,
     # Create the request
     request = srv6pmSender_pb2.StartExperimentSenderRequest()
     # Set the SID list
-    request.sdlist = '/'.join(out_sidlist)
+    request.sdlist = '/'.join(sidlist)
+    # Set the reverse SID list
+    request.sdlistreverse = '/'.join(rev_sidlist)
+    # Set the incoming interfaces
+    request.in_interfaces.extend(in_interfaces)
+    # Set the outgoing interfaces
+    request.in_interfaces.extend(out_interfaces)
     #
     # Set the sender options
     #
     # Set the measureemnt protocol
     request.sender_options.measurement_protocol = \
         srv6pmCommons_pb2.MeasurementProtocol.Value(measurement_protocol)
-    # Set the destination UDP port
-    request.sender_options.dst_udp_port = int(dst_udp_port)
+    # Set the destination UDP port of the sender
+    request.sender_options.ss_udp_port = int(send_udp_port)
+    # Set the destination UDP port of the reflector
+    request.sender_options.refl_udp_port = int(refl_udp_port)
     # Set the authentication mode
     request.sender_options.authentication_mode = \
         srv6pmCommons_pb2.AuthenticationMode.Value(authentication_mode)
@@ -191,9 +199,9 @@ def retriveExperimentResultsSender(channel, sidlist):
     return stub.retriveExperimentResults(request=request)
 
 
-def startExperimentReflector(channel, in_sidlist, out_sidlist,
+def startExperimentReflector(channel, sidlist, rev_sidlist,
                              in_interfaces, out_interfaces,
-                             measurement_protocol, dst_udp_port,
+                             measurement_protocol, send_udp_port, refl_udp_port,
                              measurement_type, authentication_mode, authentication_key,
                              loss_measurement_mode, interval_duration,
                              delay_margin, number_of_color):
@@ -202,15 +210,23 @@ def startExperimentReflector(channel, in_sidlist, out_sidlist,
     # Create the request message
     request = srv6pmReflector_pb2.StartExperimentReflectorRequest()
     # Set the SID list
-    request.sdlist = '/'.join(out_sidlist)
+    request.sdlist = '/'.join(sidlist)
+    # Set the reverse SID list
+    request.sdlistreverse = '/'.join(rev_sidlist)
+    # Set the incoming interfaces
+    request.in_interfaces.extend(in_interfaces)
+    # Set the outgoing interfaces
+    request.in_interfaces.extend(out_interfaces)
     #
     # Set the reflector options
     #
     # Set the measureemnt protocol
     request.reflector_options.measurement_protocol = \
         srv6pmCommons_pb2.MeasurementProtocol.Value(measurement_protocol)
-    # Set the destination UDP port
-    request.reflector_options.dst_udp_port = int(dst_udp_port)
+    # Set the destination UDP port of the sender
+    request.reflector_options.ss_udp_port = int(send_udp_port)
+    # Set the destination UDP port of the reflector
+    request.reflector_options.refl_udp_port = int(refl_udp_port)
     # Set the authentication mode
     request.reflector_options.authentication_mode = \
         srv6pmCommons_pb2.AuthenticationMode.Value(authentication_mode)

@@ -31,8 +31,10 @@ message StartExperimentReflectorRequest {
     uint32 measure_id = 1;
     string sdlist = 2;
     string sdlistreverse = 3;
-    ReflectorOptions reflector_options = 4;
-    ColorOptions color_options = 5;
+    repeated string in_interfaces = 4;
+    repeated string out_interfaces = 5;
+    ReflectorOptions reflector_options = 6;
+    ColorOptions color_options = 7;
 }
 
 message StartExperimentReflectorReply {

@@ -571,12 +571,13 @@ class SRv6Controller():
         # Start the experiment on the reflector
         refl_res = grpc_client.startExperimentReflector(
             channel=refl_channel,
-            in_sidlist=send_refl_sidlist,
-            out_sidlist=refl_send_sidlist,
+            sidlist=send_refl_sidlist,
+            rev_sidlist=refl_send_sidlist,
             in_interfaces=refl_in_interfaces,
             out_interfaces=refl_out_interfaces,
             measurement_protocol=measurement_protocol,
-            dst_udp_port=refl_dst_udp_port,
+            send_udp_port=send_dst_udp_port,
+            refl_udp_port=refl_dst_udp_port,
             measurement_type=measurement_type,
             authentication_mode=authentication_mode,
             authentication_key=authentication_key,
@@ -597,12 +598,13 @@ class SRv6Controller():
         # Start the experiment on the sender
         sender_res = grpc_client.startExperimentSender(
             channel=send_channel,
-            in_sidlist=refl_send_sidlist,
-            out_sidlist=send_refl_sidlist,
+            sidlist=send_refl_sidlist,
+            rev_sidlist=refl_send_sidlist,
             in_interfaces=send_in_interfaces,
             out_interfaces=send_out_interfaces,
             measurement_protocol=measurement_protocol,
-            dst_udp_port=send_dst_udp_port,
+            send_udp_port=send_dst_udp_port,
+            refl_udp_port=refl_dst_udp_port,
             measurement_type=measurement_type,
             authentication_mode=authentication_mode,
             authentication_key=authentication_key,
