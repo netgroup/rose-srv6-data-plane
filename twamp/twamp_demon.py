@@ -236,9 +236,9 @@ class SessionSender(Thread):
 
         # self.lock = Thread.Lock()
 
-        self.interval = None
-        self.margin = None
-        self.numColor = None
+        self.interval = 15
+        self.margin = timedelta(milliseconds=3000)
+        self.numColor = 2
         self.hwadapter = driver
         self.scheduler = sched.scheduler(time.time, time.sleep)
         #self.startMeas("fcff:3::1/fcff:4::1/fcff:5::1","fcff:4::1/fcff:3::1/fcff:2::1","#test")
@@ -267,8 +267,10 @@ class SessionSender(Thread):
             reflector_rx_counter = random.randint(0, 50)
             # Create the gRPC request message
             request = srv6pmServiceController_pb2.SendMeasurementDataRequest()
-            data = request.measurement_data.add() data.measure_id = measure_id
-            data.interval = interval data.timestamp = timestamp
+            data = request.measurement_data.add()
+            data.measure_id = measure_id
+            data.interval = interval
+            data.timestamp = timestamp
             data.color = color
             data.sender_tx_counter = sender_tx_counter
             data.sender_rx_counter = sender_rx_counter
@@ -430,9 +432,9 @@ class SessionSender(Thread):
         self.hwadapter.rem_sidlist_in(self.monitored_path["returnsidlist"])
         self.monitored_path={}
         # Clear color options
-        self.interval = None
-        self.margin = None
-        self.numColor = None
+        # self.interval = None
+        # self.margin = None
+        # self.numColor = None
         return 1 #mettere in un try e semmai tronare errore
 
 
@@ -467,12 +469,12 @@ class SessionSender(Thread):
 
     def set_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0]+"00"
+        mod_list[0]=mod_list[0][:-3]+"200"
         return mod_list
 
     def rem_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0][:-2]
+        mod_list[0]=mod_list[0][:-3]+"100"
         return mod_list
 
 
@@ -483,9 +485,9 @@ class SessionReflector(Thread):
         Thread.__init__(self)
         self.name = "SessionReflector"
         self.startedMeas = False
-        self.interval = None
-        self.margin = None
-        self.numColor = None
+        self.interval = 15
+        self.margin = timedelta(milliseconds=3000)
+        self.numColor = 2
 
         self.monitored_path = {}
 
@@ -611,9 +613,9 @@ class SessionReflector(Thread):
         self.hwadapter.rem_sidlist_out(self.monitored_path["returnsidlist"])
         self.monitored_path={}
         # Clear color options
-        self.interval = None
-        self.margin = None
-        self.numColor = None
+        # self.interval = None
+        # self.margin = None
+        # self.numColor = None
         return 1 #mettere in un try e semmai tornare errore
 
 
@@ -644,12 +646,12 @@ class SessionReflector(Thread):
 
     def set_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0]+"00"
+        mod_list[0]=mod_list[0][:-3]+"200"
         return mod_list
 
     def rem_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0][:-2]
+        mod_list[0]=mod_list[0][:-3]+"100"
         return mod_list
 
 
@@ -667,7 +669,7 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
         res = self.sender.startMeas(
             meas_id=request.measure_id,
             sidList=request.sdlist,
-            revSidList=request.sdlistreverse
+            revSidList=request.sdlistreverse,
             interval=request.color_options.interval_duration,
             margin=request.color_options.delay_margin,
             num_color=request.color_options.numbers_of_color
@@ -688,7 +690,7 @@ class TWAMPController(srv6pmService_pb2_grpc.SRv6PMServicer):
         print("GRPC CONTROLLER: startExperimentReflector")
         self.reflector.startMeas(
             sidList=request.sdlist,
-            revSidList=request.sdlistreverse
+            revSidList=request.sdlistreverse,
             interval=request.color_options.interval_duration,
             margin=request.color_options.delay_margin,
             num_color=request.color_options.numbers_of_color
@@ -752,14 +754,14 @@ if __name__ == '__main__':
     ipaddr =  sys.argv[1]
     gprcPort =  sys.argv[2]
     nodeID =  sys.argv[3]
-    if nodeID=="2":
-        recvInterf = "veth-punt1"
-        epbfOutInterf = "veth3-egr"
-        epbfInInterf = "veth3"
-    elif nodeID=="5":
-        recvInterf = "veth-punt2"
-        epbfOutInterf = "veth8-egr"
-        epbfInInterf = "veth8"
+    if nodeID=="d":
+        recvInterf = "punt0"
+        epbfOutInterf = "r8-r6_egr"
+        epbfInInterf = "r8-r6"
+    elif nodeID=="e":
+        recvInterf = "punt0"
+        epbfOutInterf = "r1-r2_egr"
+        epbfInInterf = "r1-r2"
     else:
         exit(-1)
 
