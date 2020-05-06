@@ -667,14 +667,14 @@ class SRv6Controller():
             res = list()
             for data in sender_res.measurement_data:
                 res.append({
-                    'measure_id': data.measure_id,
+                    'measure_id': data.meas_id,
                     'interval': data.interval,
                     'timestamp': data.timestamp,
-                    'color': data.color,
-                    'sender_tx_counter': data.sender_tx_counter,
-                    'sender_rx_counter': data.sender_rx_counter,
-                    'reflector_tx_counter': data.reflector_tx_counter,
-                    'reflector_rx_counter': data.reflector_rx_counter,
+                    'color': data.fwColor,
+                    'sender_tx_counter': data.ssTxCounter,
+                    'sender_rx_counter': data.ssRxCounter,
+                    'reflector_tx_counter': data.rfTxCounter,
+                    'reflector_rx_counter': data.rfRxCounter,
                 })
         # Return the results
         return res

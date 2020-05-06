@@ -40,7 +40,7 @@ message StopExperimentReply {
     StatusCode status = 1;
 }
 
-enum MesurementProtocol {
+enum MeasurementProtocol {
     TWAMP = 0;
     STAMP = 1;
 }
