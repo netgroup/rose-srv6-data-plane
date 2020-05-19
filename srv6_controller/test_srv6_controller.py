@@ -12,12 +12,12 @@ def start_experiment(controller):
 
     # Start the experiment
     controller.start_experiment(
-        sender='2000::d',
-        reflector='2000::14',
+        sender='2000::d', #'fcfd:0:0:1::1', #'2000::d',
+        reflector='2000::14', #'fcfd:0:0:8::1', #'2000::14',
         send_refl_dest='fd00:0:83::2',
         refl_send_dest='fd00:0:13::2',
-        send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:8::1'],
-        refl_send_sidlist=['fcff:4::1', 'fcff:3::1', 'fcff:1::1'],
+        send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:8::100'],
+        refl_send_sidlist=['fcff:4::1', 'fcff:3::1', 'fcff:1::100'],
         send_refl_localseg='fcff:8::100',
         refl_send_localseg='fcff:1::100',
         send_in_interfaces=[],
@@ -47,14 +47,14 @@ def start_experiment_no_measure_id(controller):
     # Start the experiment
     controller.start_experiment(
         measure_id=100,
-        sender='fcff:3::1',
-        reflector='fcff:2::1',
-        send_refl_dest='fd00:0:32::/64',
-        refl_send_dest='fd00:0:23::/64',
-        send_refl_sidlist=['fcff:2::1', 'fcff:2::100'],
-        refl_send_sidlist=['fcff:3::1', 'fcff:3::100'],
-        send_refl_localseg='fcff:2::100',
-        refl_send_localseg='fcff:3::100',
+        sender='fcfd:0:0:1::1', #'fcff:3::1',
+        reflector='fcfd:0:0:8::1', #'fcff:2::1',
+        send_refl_dest='fd00:0:83::/64',
+        refl_send_dest='fd00:0:13::/64',
+        send_refl_sidlist=['fcff:3::1', 'fcff:8::100'],
+        refl_send_sidlist=['fcff:3::1', 'fcff:1::100'],
+        send_refl_localseg='fcff:8::100',
+        refl_send_localseg='fcff:1::100',
         send_in_interfaces=[],
         refl_in_interfaces=[],
         send_out_interfaces=[],
@@ -80,10 +80,10 @@ def get_experiment_results(controller):
 
     # Get the results
     results = controller.get_experiment_results(
-        sender='2000::d',
-        reflector='2000::14',
-        send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:8::1'],
-        refl_send_sidlist=['fcff:4::1', 'fcff:3::1', 'fcff:1::1'],
+        sender='2000::d', #'fcfd:0:0:1::1', #'2000::d',
+        reflector='2000::14', #'fcfd:0:0:8::1', #'2000::14',
+        send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:8::100'],
+        refl_send_sidlist=['fcff:4::1', 'fcff:3::1', 'fcff:1::100'],
     )
     # Check for errors
     if results is None:
@@ -111,12 +111,12 @@ def stop_experiment(controller):
 
     # Stop the experiment
     controller.stop_experiment(
-        sender='2000::d',
-        reflector='2000::14',
+        sender='2000::d', #'fcfd:0:0:1::1', #'2000::d',
+        reflector='2000::14', #'fcfd:0:0:8::1', #'2000::14',
         send_refl_dest='fd00:0:83::2',
         refl_send_dest='fd00:0:13::2',
-        send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:8::1'],
-        refl_send_sidlist=['fcff:4::1', 'fcff:3::1', 'fcff:1::1'],
+        send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:8::100'],
+        refl_send_sidlist=['fcff:4::1', 'fcff:3::1', 'fcff:1::100'],
         send_refl_localseg='fcff:8::100',
         refl_send_localseg='fcff:1::100',
     )
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     # start_experiment_no_measure_id(controller)
     start_experiment(controller)
     # Collects results
-    for i in range(3):
+    for i in range(100):
         # Wait for 10 seconds
         time.sleep(10)
         # Get the results
@@ -153,6 +153,6 @@ if __name__ == "__main__":
     # Wait for few seconds
     time.sleep(2)
     # Stop the experiment
-    stop_experiment(controller)
+    #stop_experiment(controller)
     print()
     print()

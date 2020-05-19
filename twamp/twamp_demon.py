@@ -61,7 +61,7 @@ class EbpfInterf():
 
     def set_sidlist_out(self,sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
-        print("EBPF INS sidlist",ebpf_sid_list)
+        print("EBPF INS OUT sidlist",ebpf_sid_list)
         try:
             self.outDriver.pfplm_add_flow(self.outInterface, ebpf_sid_list) #da testare
         except EbpfException as e:
@@ -70,7 +70,7 @@ class EbpfInterf():
 
     def set_sidlist_in(self,sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
-        print("EBPF INS sidlist",ebpf_sid_list)
+        print("EBPF INS IN sidlist",ebpf_sid_list)
         try:
             self.inDriver.pfplm_add_flow(self.inInterface, ebpf_sid_list) #da testare
         except EbpfException as e:
@@ -329,7 +329,7 @@ class SessionSender(Thread):
 
             ipv6_packet = IPv6()
             ipv6_packet.src = "fcff:1::1" #TODO me li da il controller?
-            ipv6_packet.dst = "fcff:3::1" #TODO  me li da il controller?
+            ipv6_packet.dst = "fcff:4::1" #TODO  me li da il controller?
 
             mod_sidlist = self.set_punt(list(self.monitored_path["sidlistrev"]))
 
@@ -340,7 +340,7 @@ class SessionSender(Thread):
 
             ipv6_packet_inside = IPv6()
             ipv6_packet_inside.src = "fd00:0:13::1" #TODO  me li da il controller?
-            ipv6_packet_inside.dst = "fd00:0:83::1" #TODO  me li da il controller?
+            ipv6_packet_inside.dst = "fd00:0:83::2" #TODO  me li da il controller?
 
             udp_packet = UDP()
             udp_packet.dport = 1205 #TODO  me li da il controller?
@@ -469,12 +469,12 @@ class SessionSender(Thread):
 
     def set_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0][:-1]+"200"
+        mod_list[0]=mod_list[0][:-3]+"200"
         return mod_list
 
     def rem_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0][:-3]+"1"
+        mod_list[0]=mod_list[0][:-3]+"100"
         return mod_list
 
 
@@ -646,12 +646,12 @@ class SessionReflector(Thread):
 
     def set_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0][:-1]+"200"
+        mod_list[0]=mod_list[0][:-3]+"200"
         return mod_list
 
     def rem_punt(self,list):
         mod_list = list
-        mod_list[0]=mod_list[0][:-3]+"1"
+        mod_list[0]=mod_list[0][:-3]+"100"
         return mod_list
 
 
