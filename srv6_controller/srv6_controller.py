@@ -14,6 +14,9 @@ import srv6pmCommons_pb2
 import srv6pmServiceController_pb2_grpc
 import srv6pmServiceController_pb2
 
+from kafka.errors import KafkaError
+from kafka import KafkaProducer
+import json
 
 # Global variables definition
 #
@@ -39,6 +42,8 @@ DEFAULT_SERVER_SECURE = False
 DEFAULT_SERVER_CERTIFICATE = 'server_cert.pem'
 # SSL key of the gRPC server
 DEFAULT_SERVER_KEY = 'server_cert.pem'
+# Default IP:port used by the Kafka producer
+DEFAULT_KAFKA_SERVER = 'kafka:9092'
 
 
 # Human-readable gRPC return status
@@ -54,6 +59,32 @@ status_code_to_str = {
     srv6pmCommons_pb2.STATUS_GRPC_SERVICE_UNAVAILABLE: 'gRPC service not available',
     srv6pmCommons_pb2.STATUS_GRPC_UNAUTHORIZED: 'Unauthorized'
 }
+
+
+def publish_to_kafka(bootstrap_servers, topic, measure_id, interval,
+                     timestamp, fw_color, rv_color, sender_seq_num,
+                     reflector_seq_num, sender_tx_counter, sender_rx_counter,
+                     reflector_tx_counter, reflector_rx_counter):
+    # Create an istance of Kafka producer
+    producer = KafkaProducer(
+        bootstrap_servers=bootstrap_servers,
+        security_protocol='PLAINTEXT',
+        value_serializer=lambda m: json.dumps(m).encode('ascii')
+    )
+    # Publish measurement data to the provided topic
+    result = producer.send(
+        topic=topic,
+        value={'measure_id': measure_id, 'interval': interval,
+               'timestamp': timestamp, 'fw_color': fw_color,
+               'rv_color': rv_color, 'sender_seq_num': sender_seq_num,
+               'reflector_seq_num': reflector_seq_num, 
+               'sender_tx_counter': sender_tx_counter,
+               'sender_rx_counter': sender_rx_counter,
+               'reflector_tx_counter': reflector_tx_counter,
+               'reflector_rx_counter': reflector_rx_counter}
+    )
+    # Close the producer
+    producer.close()
 
 
 # Python class representing a SRv6 controller
@@ -86,6 +117,9 @@ class SRv6Controller():
     grpc_server_key : str
         the path of the server key required for the SSL
         (default is None)
+    kafka_servers :  str, optional
+        host[:port] (or list of 'host[:port]' strings) that the
+        controller should contact to publish data on Kafka
     debug : bool
         Define whether to enable debug mode or not (default is False)
 
@@ -116,7 +150,8 @@ class SRv6Controller():
     def __init__(self, grpc_server_ip, grpc_server_port, grpc_client_port,
                  grpc_client_secure=False, grpc_client_certificate=None,
                  grpc_server_secure=False, grpc_server_certificate=None,
-                 grpc_server_key=None, debug=False):
+                 grpc_server_key=None, kafka_servers=DEFAULT_KAFKA_SERVER,
+                 debug=False):
         """
         Parameters
         ----------
@@ -141,6 +176,9 @@ class SRv6Controller():
         grpc_server_key : str
             the path of the server key required for the SSL
             (default is None)
+        kafka_servers :  str or list, optional
+            host[:port] (or list of 'host[:port]' strings) that the
+            controller should contact to publish data on Kafka
         debug : bool
             define whether to enable debug mode or not (default is False)
         """
@@ -154,6 +192,8 @@ class SRv6Controller():
         self.grpc_client_secure = grpc_client_secure
         # SSL certificate of the root CA required for gRPC secure mode
         self.grpc_client_certificate = grpc_client_certificate
+        # Kafka servers
+        self.kafka_servers = kafka_servers
         # Debug mode
         self.debug = debug
         # Setup properly the logger
@@ -166,15 +206,16 @@ class SRv6Controller():
         # Start the gRPC server
         # This is a blocking operation, so we need to execute it
         # in a separated thread
-        kwargs = {
-            'grpc_ip': grpc_server_ip,
-            'grpc_port': grpc_server_port,
-            'secure': grpc_server_secure,
-            'key': grpc_server_key,
-            'certificate': grpc_server_certificate
-        }
-        Thread(target=self.__start_grpc_server, kwargs=kwargs).start()
-        time.sleep(1)
+        if grpc_server_ip is not None:
+            kwargs = {
+                'grpc_ip': grpc_server_ip,
+                'grpc_port': grpc_server_port,
+                'secure': grpc_server_secure,
+                'key': grpc_server_key,
+                'certificate': grpc_server_certificate
+            }
+            Thread(target=self.__start_grpc_server, kwargs=kwargs).start()
+            time.sleep(1)
 
     def __get_grpc_session(self, ip_address):
         """Create a Channel to a server. If a previously opened channel
@@ -629,7 +670,7 @@ class SRv6Controller():
         return srv6pmCommons_pb2.STATUS_SUCCESS
 
     def __get_measurement_results(self, sender, reflector,
-                                send_refl_sidlist, refl_send_sidlist):
+                                  send_refl_sidlist, refl_send_sidlist):
         """Get the results of a measurement process.
 
         Parameters
@@ -670,7 +711,10 @@ class SRv6Controller():
                     'measure_id': data.meas_id,
                     'interval': data.interval,
                     'timestamp': data.timestamp,
-                    'color': data.fwColor,
+                    'fw_color': data.fwColor,
+                    'rv_color': data.rvColor,
+                    'sender_seq_num': data.ssSeqNum,
+                    'reflector_seq_num': data.rfSeqNum,
                     'sender_tx_counter': data.ssTxCounter,
                     'sender_rx_counter': data.ssRxCounter,
                     'reflector_tx_counter': data.rfTxCounter,
@@ -680,7 +724,7 @@ class SRv6Controller():
         return res
 
     def __stop_measurement(self, sender, reflector,
-                         send_refl_sidlist, refl_send_sidlist):
+                           send_refl_sidlist, refl_send_sidlist):
         """Stop a measurement process on reflector and sender.
 
         Parameters
@@ -894,12 +938,47 @@ class SRv6Controller():
         """
 
         # Get the results
-        return self.__get_measurement_results(
+        results = self.__get_measurement_results(
             sender=sender,
             reflector=reflector,
             send_refl_sidlist=send_refl_sidlist,
             refl_send_sidlist=refl_send_sidlist
         )
+        if results is None:
+            print('No measurement data available')
+            return
+        # Publish results to Kafka
+        for res in results:
+            measure_id = res['measure_id']
+            interval = res['interval']
+            timestamp = res['timestamp']
+            fw_color = res['fw_color']
+            rv_color = res['rv_color']
+            sender_seq_num = res['sender_seq_num']
+            reflector_seq_num = res['reflector_seq_num']
+            sender_tx_counter = res['sender_tx_counter']
+            sender_rx_counter = res['sender_rx_counter']
+            reflector_tx_counter = res['reflector_tx_counter']
+            reflector_rx_counter = res['reflector_rx_counter']
+            # Publish data to Kafka
+            if self.kafka_servers is not None:
+                publish_to_kafka(
+                    bootstrap_servers=self.kafka_servers,
+                    topic='ktig',
+                    measure_id=measure_id,
+                    interval=interval,
+                    timestamp=timestamp,
+                    fw_color=fw_color,
+                    rv_color=rv_color,
+                    sender_seq_num=sender_seq_num,
+                    reflector_seq_num=reflector_seq_num,
+                    sender_tx_counter=sender_tx_counter,
+                    sender_rx_counter=sender_rx_counter,
+                    reflector_tx_counter=reflector_tx_counter,
+                    reflector_rx_counter=reflector_rx_counter
+                )
+        # Return the results
+        return results
 
     def stop_experiment(self, sender, reflector, send_refl_dest,
                         refl_send_dest, send_refl_sidlist, refl_send_sidlist,
@@ -978,15 +1057,34 @@ class SRv6Controller():
             logger.debug('Measurement data received: %s' % request)
             # Extract data from the request
             for data in request.measurement_data:
-                measure_id = data.measure_id
+                measure_id = data.meas_id
                 interval = data.interval
                 timestamp = data.timestamp
-                color = data.color
-                sender_tx_counter = data.sender_tx_counter
-                sender_rx_counter = data.sender_rx_counter
-                reflector_tx_counter = data.reflector_tx_counter
-                reflector_rx_counter = data.reflector_rx_counter
-                # Publish data on Kafka
+                fw_color = data.fwColor
+                rv_color = data.rvColor
+                sender_seq_num = ssSeqNum
+                reflector_seq_num = rfSeqNum
+                sender_tx_counter = data.ssTxCounter
+                sender_rx_counter = data.ssRxCounter
+                reflector_tx_counter = data.rfTxCounter
+                reflector_rx_counter = data.rfRxCounter
+                # Publish data to Kafka
+                if self.kafka_servers is not None:
+                    publish_to_kafka(
+                        bootstrap_servers=self.kafka_servers,
+                        topic='ktig',
+                        measure_id=measure_id,
+                        interval=interval,
+                        timestamp=timestamp,
+                        fw_color=fw_color,
+                        rv_color=rv_color,
+                        sender_seq_num=sender_seq_num,
+                        reflector_seq_num=reflector_seq_num,
+                        sender_tx_counter=sender_tx_counter,
+                        sender_rx_counter=sender_rx_counter,
+                        reflector_tx_counter=reflector_tx_counter,
+                        reflector_rx_counter=reflector_rx_counter
+                    )
             status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
             return srv6pmServiceController_pb2.SendMeasurementDataResponse(
                 status=status)
