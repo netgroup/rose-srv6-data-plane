@@ -1,12 +1,16 @@
 #!/usr/bin/python
 
-import iperf3
-
 
 from argparse import ArgumentParser
 from subprocess import Popen, PIPE
-import sys
 import re
+
+
+def publish_data_to_kafka(measure_id, generator_id, data, verbose=False):
+    data['measure_id'] = measure_id
+    data['generator_id'] = generator_id
+    # TODO publish to kafka
+    print('%s\n' % data)
 
 
 def parse_data_server(data, verbose=False):
@@ -61,7 +65,8 @@ def parse_data_client(data, verbose=False):
         return res
 
 
-def start_server(address, port=None, verbose=False):
+def start_server(address, port=None, measure_id=None,
+                 generator_id=None, verbose=False):
     # Build the command to start the server
     cmd = 'iperf3 --forceflush --server --bind %s' % address
     if port is not None:
@@ -83,13 +88,13 @@ def start_server(address, port=None, verbose=False):
             # Parse data
             res = parse_data_server(out, verbose)
             if res is not None:
-                pass  # TODO send data
+                publish_data_to_kafka(measure_id, generator_id, res, verbose)
 
 
 def start_client(client_address, server_address, server_port=None,
                  duration=None, bandwidth=None, num_streams=None, mss=None,
                  bidir=False, reverse=False, zerocopy=False, version6=False,
-                 verbose=False):
+                 measure_id=None, generator_id=None, verbose=False):
     # Build the command to start the server
     cmd = 'iperf3 --forceflush --client %s' % server_address
     # Only use IPv6
@@ -139,7 +144,7 @@ def start_client(client_address, server_address, server_port=None,
             # Parse data
             res = parse_data_client(out, verbose)
             if res is not None:
-                pass  # TODO send data
+                publish_data_to_kafka(measure_id, generator_id, res, verbose)
 
 
 def parse_arguments():
@@ -159,6 +164,16 @@ def parse_arguments():
     parser.add_argument(
         '-s', '--server', dest='server', action='store_true',
         default=False, help='Run in server mode'
+    )
+    # Measure ID
+    parser.add_argument(
+        '--measure-id', dest='measure_id', action='store',
+        help='Measure ID', required=True
+    )
+    # Generator ID
+    parser.add_argument(
+        '--generator-id', dest='generator_id', action='store',
+        help='Generator ID', required=True
     )
     # Bind to the specific interface associated with the address
     parser.add_argument(
@@ -238,6 +253,10 @@ if __name__ == "__main__":
     # Run in client mode
     host = args.host
     client = host is not None
+    # Measure ID
+    measure_id = args.measure_id
+    # Generator ID
+    generator_id = args.generator_id
     # Bind to the specific interface associated with the address
     bind = args.bind
     # Server port to listen on/connect to
@@ -272,6 +291,8 @@ if __name__ == "__main__":
         start_server(
             address=bind,
             port=port,
+            measure_id=measure_id,
+            generator_id=generator_id,
             verbose=verbose
         )
     elif client and not server:
@@ -287,6 +308,8 @@ if __name__ == "__main__":
             reverse=reverse,
             zerocopy=zerocopy,
             version6=version6,
+            measure_id=measure_id,
+            generator_id=generator_id,
             verbose=verbose
         )
     else:
