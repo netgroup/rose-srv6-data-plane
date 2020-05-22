@@ -85,6 +85,8 @@ def publish_to_kafka(bootstrap_servers, topic, measure_id, interval,
     )
     # Close the producer
     producer.close()
+    # Return result
+    return result
 
 
 # Python class representing a SRv6 controller
