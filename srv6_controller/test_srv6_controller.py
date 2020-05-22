@@ -12,8 +12,8 @@ def start_experiment(controller):
 
     # Start the experiment
     controller.start_experiment(
-        sender='2000::d', #'fcfd:0:0:1::1', #'2000::d',
-        reflector='2000::14', #'fcfd:0:0:8::1', #'2000::14',
+        sender='fcfd:0:0:1::1', #'2000::d',
+        reflector='fcfd:0:0:8::1', #'2000::14',
         send_refl_dest='fd00:0:83::2',
         refl_send_dest='fd00:0:13::2',
         send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:8::100'],
@@ -80,8 +80,8 @@ def get_experiment_results(controller):
 
     # Get the results
     results = controller.get_experiment_results(
-        sender='2000::d', #'fcfd:0:0:1::1', #'2000::d',
-        reflector='2000::14', #'fcfd:0:0:8::1', #'2000::14',
+        sender='fcfd:0:0:1::1', #'2000::d',
+        reflector='fcfd:0:0:8::1', #'2000::14',
         send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:8::100'],
         refl_send_sidlist=['fcff:4::1', 'fcff:3::1', 'fcff:1::100'],
     )
@@ -114,8 +114,8 @@ def stop_experiment(controller):
 
     # Stop the experiment
     controller.stop_experiment(
-        sender='2000::d', #'fcfd:0:0:1::1', #'2000::d',
-        reflector='2000::14', #'fcfd:0:0:8::1', #'2000::14',
+        sender='fcfd:0:0:1::1', #'2000::d',
+        reflector='fcfd:0:0:8::1', #'2000::14',
         send_refl_dest='fd00:0:83::2',
         refl_send_dest='fd00:0:13::2',
         send_refl_sidlist=['fcff:3::1', 'fcff:4::1', 'fcff:8::100'],
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     # IP address of the gRPC server
     grpc_server_ip = '::'
     # Port of the gRPC server
-    grpc_server_port = 50052
+    grpc_server_port = 50051
     # Port of the gRPC client
     grpc_client_port = 50052
     # Create a new SRv6 Controller

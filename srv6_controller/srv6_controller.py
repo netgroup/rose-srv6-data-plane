@@ -45,6 +45,11 @@ DEFAULT_SERVER_KEY = 'server_cert.pem'
 # Default IP:port used by the Kafka producer
 DEFAULT_KAFKA_SERVER = 'kafka:9092'
 
+# Topic for TWAMP data
+TOPIC_TWAMP = 'twamp'
+# Topic for iperf data
+TOPIC_IPERF = 'iperf'
+
 
 # Human-readable gRPC return status
 status_code_to_str = {
@@ -82,6 +87,38 @@ def publish_to_kafka(bootstrap_servers, topic, measure_id, interval,
                'sender_rx_counter': sender_rx_counter,
                'reflector_tx_counter': reflector_tx_counter,
                'reflector_rx_counter': reflector_rx_counter}
+    )
+    # Close the producer
+    producer.close()
+    # Return result
+    return result
+
+
+def publish_iperf_data_to_kafka(bootstrap_servers, topic, _from, measure_id,
+                                generator_id, interval, transfer,
+                                transfer_dim, bitrate, bitrate_dim,
+                                retr, cwnd, cwnd_dim):
+    # Create an istance of Kafka producer
+    producer = KafkaProducer(
+        bootstrap_servers=bootstrap_servers,
+        security_protocol='PLAINTEXT',
+        value_serializer=lambda m: json.dumps(m).encode('ascii')
+    )
+    # Publish measurement data to the provided topic
+    result = producer.send(
+        topic=topic,
+        value={'from': _from,
+               'measure_id': measure_id,
+               'generator_id': generator_id,
+               'interval': interval,
+               'transfer': transfer,
+               'transfer_dim': transfer_dim,
+               'bitrate': bitrate,
+               'bitrate_dim': bitrate_dim,
+               'retr': retr,
+               'cwnd': cwnd,
+               'cwnd_dim': cwnd_dim
+        }
     )
     # Close the producer
     producer.close()
@@ -1064,17 +1101,17 @@ class SRv6Controller():
                 timestamp = data.timestamp
                 fw_color = data.fwColor
                 rv_color = data.rvColor
-                sender_seq_num = ssSeqNum
-                reflector_seq_num = rfSeqNum
+                sender_seq_num = data.ssSeqNum
+                reflector_seq_num = data.rfSeqNum
                 sender_tx_counter = data.ssTxCounter
                 sender_rx_counter = data.ssRxCounter
                 reflector_tx_counter = data.rfTxCounter
                 reflector_rx_counter = data.rfRxCounter
                 # Publish data to Kafka
-                if self.kafka_servers is not None:
+                if self.controller.kafka_servers is not None:
                     publish_to_kafka(
-                        bootstrap_servers=self.kafka_servers,
-                        topic='ktig',
+                        bootstrap_servers=self.controller.kafka_servers,
+                        topic=TOPIC_TWAMP,
                         measure_id=measure_id,
                         interval=interval,
                         timestamp=timestamp,
@@ -1089,6 +1126,52 @@ class SRv6Controller():
                     )
             status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
             return srv6pmServiceController_pb2.SendMeasurementDataResponse(
+                status=status)
+
+        def SendIperfData(self, request, context):
+            """RPC used to send iperf data to the controller"""
+
+            logger.debug('Iperf data received: %s' % request)
+            # Extract data from the request
+            for data in request.iperf_data:
+                # From client/server
+                _from = data._from
+                # Measure ID
+                measure_id = data.measure_id
+                # Generator ID
+                generator_id = data.generator_id
+                # Interval
+                interval = data.interval.val
+                # Transfer
+                transfer = data.transfer.val
+                transfer_dim = data.transfer.dim
+                # Bitrate
+                bitrate = data.bitrate.val
+                bitrate_dim = data.bitrate.dim
+                # Retr
+                retr = data.retr.val
+                # Cwnd
+                cwnd = data.cwnd.val
+                cwnd_dim = data.cwnd.dim
+                # Publish data to Kafka
+                if self.controller.kafka_servers is not None:
+                    publish_iperf_data_to_kafka(
+                        bootstrap_servers=self.controller.kafka_servers,
+                        topic=TOPIC_IPERF,
+                        _from=_from,
+                        measure_id=measure_id,
+                        generator_id=generator_id,
+                        interval=interval,
+                        transfer=transfer,
+                        transfer_dim=transfer_dim,
+                        bitrate=bitrate,
+                        bitrate_dim=bitrate_dim,
+                        retr=retr,
+                        cwnd=cwnd,
+                        cwnd_dim=cwnd_dim,
+                    )
+            status = srv6pmCommons_pb2.StatusCode.Value('STATUS_SUCCESS')
+            return srv6pmServiceController_pb2.SendIperfDataResponse(
                 status=status)
 
     def __start_grpc_server(self,
