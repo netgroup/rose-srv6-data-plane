@@ -47,21 +47,32 @@ def parse_data_server(data, verbose=False):
     if verbose:
         print('Parsing line:  %s' % data)
     # Search pattern
-    m = re.search('\\s+(\\S+)\\s+sec\\s+(\\S+) MBytes\\s+(\\S+) Mbits/sec',
+    m = re.search(r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)',
                   data)
+    # Group 1.	Interval
+    # Group 2.	Transfer
+    # Group 3.	Transfer dimension
+    # Group 4.	Bitrate
+    # Group 5.	Bitrate dimension
+    # Group 6.	no needed
+
     # Match
     if (m):
         # Extract interval
         interval = m.group(1)
-        # Extract transfer (in MBytes)
+        # Extract transfer
         transfer = m.group(2)
-        # Extract bandwidth (in Mbits/sec)
-        bandwidth = m.group(3)
+        transfer_dim = m.group(3)
+        # Extract bandwidth
+        bandwidth = m.group(4)
+        bandwidth_dim = m.group(5)
         # Build results dict
         res = {
             'interval': interval,
             'transfer': transfer,
-            'bandwidth': bandwidth
+            'transfer_dim': transfer_dim,
+            'bandwidth': bandwidth,
+            'bandwidth_dim': bandwidth_dim
         }
         if verbose:
             print('Got %s\n' % res)
@@ -73,21 +84,36 @@ def parse_data_client(data, verbose=False):
     if verbose:
         print('Parsing line:  %s' % data)
     # Search pattern
-    m = re.search('\\s+(\\S+)\\s+sec\\s+(\\S+) MBytes\\s+(\\S+) Mbits/sec\\s+\\S+\\s+\\S+',
+    m = re.search(r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)\s+(\d+)\s+(\d+.\d+)\s+(MBytes|KBytes|Mbits|Kbits|Bytes|bits)',
                   data)
+
+    # Group 1.	Interval
+    # Group 2.	Transfer
+    # Group 3.	Transfer dimension
+    # Group 4.	Bitrate
+    # Group 5.	Bitrate dimension
+    # Group 6.	no needed
+    # Group 7.	Retr
+    # Group 8.	Cwnd
+    # Group 9.	Cwnd dimension
+
     # Match
     if (m):
         # Extract interval
         interval = m.group(1)
-        # Extract transfer (in MBytes)
+        # Extract transfer
         transfer = m.group(2)
-        # Extract bandwidth (in Mbits/sec)
-        bandwidth = m.group(3)
+        transfer_dim = m.group(3)
+        # Extract bandwidth
+        bandwidth = m.group(4)
+        bandwidth_dim = m.group(5)
         # Build results dict
         res = {
             'interval': interval,
             'transfer': transfer,
-            'bandwidth': bandwidth
+            'transfer_dim': transfer_dim,
+            'bandwidth': bandwidth,
+            'bandwidth_dim': bandwidth_dim
         }
         if verbose:
             print('Got %s\n' % res)
