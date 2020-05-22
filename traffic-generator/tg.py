@@ -1,9 +1,12 @@
 #!/usr/bin/python
 
 
+import os
+import signal
 from argparse import ArgumentParser
 from subprocess import Popen, PIPE
 import re
+import atexit
 
 from kafka import KafkaProducer
 import json
@@ -17,14 +20,33 @@ logger = logging.getLogger(__name__)
 # Default IP:port used by the Kafka producer
 DEFAULT_KAFKA_SERVER = 'kafka:9092'
 # Kafka topic
-TOPIC = 'ktig'
+TOPIC = 'iperf'
 
 
-def publish_data_to_kafka(measure_id, generator_id, data, verbose=False):
+import grpc
+
+# SRv6PM dependencies
+import srv6pmServiceController_pb2
+import srv6pmServiceController_pb2_grpc
+
+# Controller IP and port
+grpc_ip_controller = '172.16.0.100'        # TODO remove hardcoded param
+grpc_port_controller = 50051        # TODO remove hardcoded param
+# gRPC channel
+channel = channel = grpc.insecure_channel(
+    'ipv4:%s:%s' % (grpc_ip_controller, grpc_port_controller))        # TODO remove hardcoded param
+
+PUBLISH_TO_KAFKA = False
+SEND_DATA_TO_CONTROLLER = True
+
+
+def publish_data_to_kafka(_from, measure_id, generator_id, data, verbose=False):
+    data['from'] = _from
     data['measure_id'] = measure_id
     data['generator_id'] = generator_id
-    # TODO publish to kafka
-    print('%s\n' % data)
+    if verbose:
+        print('*** Publish data to Kafka\n')
+        print('%s\n' % data)
 
     # Create an istance of Kafka producer
     producer = KafkaProducer(
@@ -41,6 +63,46 @@ def publish_data_to_kafka(measure_id, generator_id, data, verbose=False):
     producer.close()
     # Return result
     return result
+
+
+def send_data_to_controller(_from, measure_id,
+                            generator_id, data, verbose=False):
+    data['_from'] = _from
+    data['measure_id'] = measure_id
+    data['generator_id'] = generator_id
+    if verbose:
+        print('*** Sending data to controller\n')
+        print('%s\n' % data)
+    # Create the gRPC request message
+    request = srv6pmServiceController_pb2.SendIperfDataRequest()
+    iperf_data = request.iperf_data.add()
+    # From server/client
+    iperf_data._from = str(_from)
+    # Measure ID
+    iperf_data.measure_id = int(measure_id)
+    # Generator ID
+    iperf_data.generator_id = int(generator_id)
+    # Set interval
+    iperf_data.interval.val = str(data['interval'])
+    # Set bitrate
+    iperf_data.bitrate.val = float(data['bitrate'])
+    iperf_data.bitrate.dim = str(data['bitrate_dim'])
+    # Set transfer
+    iperf_data.transfer.val = float(data['transfer'])
+    iperf_data.transfer.dim = str(data['transfer_dim'])
+    # Set retr
+    if 'retr' in data:
+        iperf_data.retr.val = int(data['retr'])
+    # Set cwnd
+    if 'cwnd' in data:
+        iperf_data.cwnd.val = float(data['cwnd'])
+        iperf_data.cwnd.dim = str(data['cwnd_dim'])
+    # Get the stub
+    stub = srv6pmServiceController_pb2_grpc.SRv6PMControllerStub(channel)
+    # Send mesaurement data
+    res = stub.SendIperfData(request)
+    if verbose:
+        print('Sent data to the controller. Status code: %s' % res.status)
 
 
 def parse_data_server(data, verbose=False):
@@ -63,16 +125,16 @@ def parse_data_server(data, verbose=False):
         # Extract transfer
         transfer = m.group(2)
         transfer_dim = m.group(3)
-        # Extract bandwidth
-        bandwidth = m.group(4)
-        bandwidth_dim = m.group(5)
+        # Extract bitrate
+        bitrate = m.group(4)
+        bitrate_dim = m.group(5)
         # Build results dict
         res = {
             'interval': interval,
             'transfer': transfer,
             'transfer_dim': transfer_dim,
-            'bandwidth': bandwidth,
-            'bandwidth_dim': bandwidth_dim
+            'bitrate': bitrate,
+            'bitrate_dim': bitrate_dim
         }
         if verbose:
             print('Got %s\n' % res)
@@ -104,21 +166,35 @@ def parse_data_client(data, verbose=False):
         # Extract transfer
         transfer = m.group(2)
         transfer_dim = m.group(3)
-        # Extract bandwidth
-        bandwidth = m.group(4)
-        bandwidth_dim = m.group(5)
+        # Extract bitrate
+        bitrate = m.group(4)
+        bitrate_dim = m.group(5)
+        # Extract retr
+        retr = m.group(7)
+        # Extract cwnd
+        cwnd = m.group(8)
+        cwnd_dim = m.group(9)
         # Build results dict
         res = {
             'interval': interval,
             'transfer': transfer,
             'transfer_dim': transfer_dim,
-            'bandwidth': bandwidth,
-            'bandwidth_dim': bandwidth_dim
+            'bitrate': bitrate,
+            'bitrate_dim': bitrate_dim,
+            'retr': retr,
+            'cwnd': cwnd,
+            'cwnd_dim': cwnd_dim
         }
         if verbose:
             print('Got %s\n' % res)
         # Return results
         return res
+
+
+def cleanup(process):
+    # Terminate iperf3 process
+    os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+    process.kill()
 
 
 def start_server(address, port=None, measure_id=None,
@@ -136,6 +212,8 @@ def start_server(address, port=None, measure_id=None,
         print(cmd)
     # Execute the command in a new process and redirect output to PIPE
     p = Popen(cmd, shell=True, stdout=PIPE)
+    # Register process termination when the python program terminates
+    atexit.register(cleanup, process=p)
     # Iterate on the output generated by iperf3
     while True:
         # Read a line
@@ -148,7 +226,23 @@ def start_server(address, port=None, measure_id=None,
             # Parse data
             res = parse_data_server(out.decode(), verbose)
             if res is not None:
-                publish_data_to_kafka(measure_id, generator_id, res, verbose)
+                # Publish data to Kafka
+                if PUBLISH_TO_KAFKA:
+                    publish_data_to_kafka(
+                        measure_id=measure_id,
+                        generator_id=generator_id,
+                        res=res,
+                        verbose=verbose
+                    )
+                # Send data to the controller
+                if SEND_DATA_TO_CONTROLLER:
+                    send_data_to_controller(
+                        _from='server',
+                        measure_id=measure_id,
+                        generator_id=generator_id,
+                        data=res,
+                        verbose=verbose
+                    )
 
 
 def start_client(client_address, server_address, server_port=None,
@@ -192,6 +286,8 @@ def start_client(client_address, server_address, server_port=None,
         print(cmd)
     # Execute the command in a new process and redirect output to PIPE
     p = Popen(cmd, shell=True, stdout=PIPE)
+    # Register process termination when the python program terminates
+    atexit.register(cleanup, process=p)
     # Iterate on the output generated by iperf3
     while True:
         # Read a line
@@ -204,7 +300,23 @@ def start_client(client_address, server_address, server_port=None,
             # Parse data
             res = parse_data_client(out.decode(), verbose)
             if res is not None:
-                publish_data_to_kafka(measure_id, generator_id, res, verbose)
+                # Publish data to Kafka
+                if PUBLISH_TO_KAFKA:
+                    publish_data_to_kafka(
+                        measure_id=measure_id,
+                        generator_id=generator_id,
+                        res=res,
+                        verbose=verbose
+                    )
+                # Send data to the controller
+                if SEND_DATA_TO_CONTROLLER:
+                    send_data_to_controller(
+                        _from='client',
+                        measure_id=measure_id,
+                        generator_id=generator_id,
+                        data=res,
+                        verbose=verbose
+                    )
 
 
 def parse_arguments():
@@ -228,12 +340,12 @@ def parse_arguments():
     # Measure ID
     parser.add_argument(
         '--measure-id', dest='measure_id', action='store',
-        help='Measure ID', required=True
+        help='Measure ID', required=True, type=int
     )
     # Generator ID
     parser.add_argument(
         '--generator-id', dest='generator_id', action='store',
-        help='Generator ID', required=True
+        help='Generator ID', required=True, type=int
     )
     # Bind to the specific interface associated with the address
     parser.add_argument(
