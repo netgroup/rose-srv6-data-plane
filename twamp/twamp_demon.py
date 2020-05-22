@@ -277,7 +277,7 @@ class SessionSender(Thread):
             data.sender_rx_counter = sender_rx_counter
             data.reflector_tx_counter = reflector_tx_counter
             data.reflector_rx_counter = reflector_rx_counter
-            channel = grpc.insecure_channel('ipv6:[%s]:%s' % grpc_ip_controller, grpc_port_controller)
+            channel = grpc.insecure_channel('ipv6:[%s]:%s' % (grpc_ip_controller, grpc_port_controller))  # TODO lasciare chan aperto
             stub = srv6pmServiceController_pb2_grpc.SRv6PMControllerStub(channel)
             # Send mesaurement data
             res =stub.SendMeasurementData(request)
@@ -329,7 +329,7 @@ class SessionSender(Thread):
 
             ipv6_packet = IPv6()
             ipv6_packet.src = "fcff:1::1" #TODO me li da il controller?
-            ipv6_packet.dst = "fcff:4::1" #TODO  me li da il controller?
+            ipv6_packet.dst = "fcff:3::1" #TODO  me li da il controller?
 
             mod_sidlist = self.set_punt(list(self.monitored_path["sidlistrev"]))
 
@@ -528,7 +528,7 @@ class SessionReflector(Thread):
         rfTransmitCounter = self.hwadapter.read_tx_counter(rfBlockNumber,self.monitored_path["returnsidlist"])
 
         ipv6_packet = IPv6()
-        ipv6_packet.src = "fcff:5::1" #TODO  me li da il controller?
+        ipv6_packet.src = "fcff:8::1" #TODO  me li da il controller?
         ipv6_packet.dst = "fcff:4::1" #TODO  me li da il controller?
 
         mod_sidlist = self.set_punt(list(self.monitored_path["returnsidlistrev"]))
