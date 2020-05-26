@@ -1,17 +1,107 @@
 #!/usr/bin/python
 
+##############################################################################################
+# Copyright (C) 2020 Carmine Scarpitta - (Consortium GARR and University of Rome "Tor Vergata")
+# www.garr.it - www.uniroma2.it/netgroup
+#
+#
+# Licensed under the Apache License, Version 2.0 (the 'License');
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Traffic generator based on iperf3 for SRv6 PM
+#
+# @author Carmine Scarpitta <carmine.scarpitta@uniroma2.it>
+#
+
 
 import os
+
+# Activate virtual environment if a venv path has been specified in .venv
+# This must be executed only if this file has been executed as a 
+# script (instead of a module)
+if __name__ == '__main__':
+    # Check if .venv file exists
+    if os.path.exists('.venv'):
+        with open('.venv', 'r') as venv_file:
+            # Get virtualenv path from .venv file
+            # and remove trailing newline chars
+            venv_path = venv_file.read().rstrip()
+        # Get path of the activation script
+        venv_path = os.path.join(venv_path, 'bin/activate_this.py')
+        if not os.path.exists(venv_path):
+            print('Virtual environment path specified in .venv '
+                  'points to an invalid path\n')
+            exit(-2)
+        with open(venv_path) as f:
+            # Read the activation script
+            code = compile(f.read(), venv_path, 'exec')
+            # Execute the activation script to activate the venv
+            exec(code, {'__file__': venv_path})
+
 import signal
 from argparse import ArgumentParser
 from subprocess import Popen, PIPE
 import re
 import atexit
 
-from kafka import KafkaProducer
+#from kafka import KafkaProducer
 import json
 
 import logging
+
+import sys
+from dotenv import load_dotenv
+
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Folder containing this script
+BASE_PATH = os.path.dirname(os.path.realpath(__file__))
+
+# Folder containing the files auto-generated from proto files
+PROTO_PATH = os.path.join(BASE_PATH, '../protos/gen-py/')
+
+# Environment variables have priority over hardcoded paths
+# If an environment variable is set, we must use it instead of
+# the hardcoded constant
+if os.getenv('PROTO_PATH') is not None:
+    # Check if the PROTO_PATH variable is set
+    if os.getenv('PROTO_PATH') == '':
+        print('Error : Set PROTO_PATH variable in .env\n')
+        sys.exit(-2)
+    # Check if the PROTO_PATH variable points to an existing folder
+    if not os.path.exists(os.getenv('PROTO_PATH')):
+        print('Error : PROTO_PATH variable in '
+              '.env points to a non existing folder')
+        sys.exit(-2)
+    # PROTO_PATH in .env is correct. We use it.
+    PROTO_PATH = os.getenv('PROTO_PATH')
+else:
+    # PROTO_PATH in .env is not set, we use the hardcoded path
+    #
+    # Check if the PROTO_PATH variable is set
+    if PROTO_PATH == '':
+        print('Error : Set PROTO_PATH variable in .env or %s' % sys.argv[0])
+        sys.exit(-2)
+    # Check if the PROTO_PATH variable points to an existing folder
+    if not os.path.exists(PROTO_PATH):
+        print('Error : PROTO_PATH variable in '
+              '%s points to a non existing folder' % sys.argv[0])
+        print('Error : Set PROTO_PATH variable in .env or %s\n' % sys.argv[0])
+        sys.exit(-2)
+
+# Add PROTO folder
+sys.path.append(PROTO_PATH)
 
 # Logger reference
 logging.basicConfig(level=logging.NOTSET)
@@ -30,16 +120,16 @@ import srv6pmServiceController_pb2
 import srv6pmServiceController_pb2_grpc
 
 # Controller IP and port
-grpc_ip_controller = '172.16.0.100'        # TODO remove hardcoded param
+grpc_ip_controller = 'fcfd:0:0:fd::1'        # TODO remove hardcoded param
 grpc_port_controller = 50051        # TODO remove hardcoded param
 # gRPC channel
 channel = channel = grpc.insecure_channel(
-    'ipv4:%s:%s' % (grpc_ip_controller, grpc_port_controller))        # TODO remove hardcoded param
+    'ipv6:[%s]:%s' % (grpc_ip_controller, grpc_port_controller))        # TODO remove hardcoded param
 
 PUBLISH_TO_KAFKA = False
 SEND_DATA_TO_CONTROLLER = True
 
-
+"""
 def publish_data_to_kafka(_from, measure_id, generator_id, data, verbose=False):
     data['from'] = _from
     data['measure_id'] = measure_id
@@ -63,6 +153,7 @@ def publish_data_to_kafka(_from, measure_id, generator_id, data, verbose=False):
     producer.close()
     # Return result
     return result
+"""
 
 
 def send_data_to_controller(_from, measure_id,
