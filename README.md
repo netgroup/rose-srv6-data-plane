@@ -1,19 +1,52 @@
-# Your project name (code repository)
+# Loss Monitoring gRPC
 
+## Prerequisites
 
-<!--- example of figure
-      always put the link to the img source (e.g. gslide):
-      https://docs.google.com/presentation/d/1rV0ViQYk9lYUnJH16zvf5qBDUK4yTWAeHoryo6Fe0jo/edit#slide=id.g7f4100c2bd_6_0 
-      export the slide as .png, and upload in docs/images with the same name --->
-![example.png](<./docs/images/example.png>)
+gRPC Python is supported for use with Python 2.7 or Python 3.4 or higher.
+For the project pourpose we will use Python >= 3.4
 
-```text
-Export this project :
-Settings->General->Advanced(Expand): Export project
-(saves a .tar.gz)
+- Python >= 3.4
+- pip (python-pip) [https://pip.pypa.io/en/stable/quickstart/]
 
-Import the project:
-Projects->New project->Import project
-(provide the .tar.gz)
-```
+### Install virtualenv
 
+    $ pip install virtualenv
+
+for more details regarding `virtualenv` ['https://virtualenv.pypa.io/en/latest/']
+
+### Create Virtual enviroment
+
+    $ virtualenv venv
+
+### Activate Virtual enviroment already created
+
+    $ source venv/bin/activate
+
+this command must be executed every time, just before start to work with the project
+
+### Install requirements (gRPC and gRPC tools)
+
+As soon the virtualenv is active you can install all the dependencies with the command below
+
+    $ pip install -r requirements.txt
+
+## Generate gRPC code
+
+Clean the already generated gRPC code
+    $ cd grpc-services/protos
+    $ ./cleanup.sh
+
+From the base directory of the project
+
+    $ cd grpc-services/protos
+    $ ./build.sh
+
+## Use of the generated gRPC code as module
+
+first step set the env var PYTHONPATH
+
+    $ export PYTHONPATH="${PYTHONPATH}:./grpc-services/protos/gen-py:./twamp:../xdp_experiments/srv6-pfplm/"
+
+then execute the script
+
+    $ python ppl/ppl_sender_server.py
