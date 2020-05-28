@@ -28,9 +28,6 @@ import srv6pmReflector_pb2_grpc
 import srv6pmSender_pb2
 import srv6pmSender_pb2_grpc
 
-from srv6_manager import SRv6Manager
-import srv6_manager_pb2
-import srv6_manager_pb2_grpc
 from xdp_srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
 
 
@@ -742,8 +739,6 @@ def serve(ipaddr,gprcPort,recvInterf,epbfOutInterf,epbfInInterf):
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     srv6pmService_pb2_grpc.add_SRv6PMServicer_to_server(TWAMPController(sessionsender,sessionreflector), server)
-    srv6_manager_pb2_grpc.add_SRv6ManagerServicer_to_server(
-        SRv6Manager(), server)
     server.add_insecure_port("[{ip}]:{port}".format(ip=ipaddr,port=gprcPort))
     #server.add_insecure_port("{ip}:{port}".format(ip=ipaddr,port=gprcPort))
     print("\n-------------- Start Demon --------------\n")
