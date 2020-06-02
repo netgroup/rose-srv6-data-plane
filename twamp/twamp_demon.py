@@ -43,47 +43,15 @@ from scapy.layers.inet import UDP
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrSegmentRouting
 import twamp
 
-# Load environment variables from .env file
-load_dotenv()
-
 # Folder containing this script
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-# Folder containing the SRV6_PFPLM files
-SRV6_PFPLM_PATH = '/home/rose/workspace/srv6_pfplm'
-
-# Environment variables have priority over hardcoded paths
-# If an environment variable is set, we must use it instead of
-# the hardcoded constant
-if os.getenv('SRV6_PFPLM_PATH') is not None:
-    # Check if the SRV6_PFPLM_PATH variable is set
-    if os.getenv('SRV6_PFPLM_PATH') == '':
-        print('Error : Set SRV6_PFPLM_PATH variable in .env\n')
-        sys.exit(-2)
-    # Check if the SRV6_PFPLM_PATH variable points to an existing folder
-    if not os.path.exists(os.getenv('SRV6_PFPLM_PATH')):
-        print('Error : SRV6_PFPLM_PATH variable in '
-              '.env points to a non existing folder')
-        sys.exit(-2)
-    # SRV6_PFPLM_PATH in .env is correct. We use it.
-    SRV6_PFPLM_PATH = os.getenv('SRV6_PFPLM_PATH')
-else:
-    # SRV6_PFPLM_PATH in .env is not set, we use the hardcoded path
-    #
-    # Check if the SRV6_PFPLM_PATH variable is set
-    if SRV6_PFPLM_PATH == '':
-        print('Error : Set SRV6_PFPLM_PATH variable in .env or %s' %
-              sys.argv[0])
-        sys.exit(-2)
-    # Check if the SRV6_PFPLM_PATH variable points to an existing folder
-    if not os.path.exists(SRV6_PFPLM_PATH):
-        print('Error : SRV6_PFPLM_PATH variable in '
-              '%s points to a non existing folder' % sys.argv[0])
-        print('Error : Set SRV6_PFPLM_PATH variable in .env or %s\n' %
-              sys.argv[0])
-        sys.exit(-2)
-
 # SRv6 PFPLM dependencies
+SRV6_PM_XDP_EBPF_PATH = os.getenv('SRV6_PM_XDP_EBPF_PATH', None)
+if SRV6_PM_XDP_EBPF_PATH is None:
+    print('SRV6_PM_XDP_EBPF_PATH environment variable not set')
+    exit(-2)
+SRV6_PFPLM_PATH = os.path.join(SRV6_PM_XDP_EBPF_PATH, 'srv6-pfplm/')
 sys.path.append(SRV6_PFPLM_PATH)
 
 from xdp_srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
