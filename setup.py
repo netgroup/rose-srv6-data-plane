@@ -18,6 +18,7 @@ if os.path.isfile(requirements_path):
 
 packages = [
     'data_plane',
+    'data_plane/twamp',
 ]
 
 setuptools.setup(
