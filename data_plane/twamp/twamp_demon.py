@@ -17,7 +17,7 @@ import shlex
 from scapy.all import send, sniff
 from scapy.layers.inet import UDP
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrSegmentRouting
-import twamp
+from data_plane.twamp import twamp
 
 import netifaces
 
