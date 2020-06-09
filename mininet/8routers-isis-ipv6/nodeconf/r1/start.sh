@@ -51,7 +51,9 @@ sysctl -w net.ipv6.conf.all.forwarding=1
   #echo 0 > $i
 #done
 
-source_file_if_defined "${EBPF_START}"
+mount -t bpf bpf /sys/fs/bpf/
+
+# source_file_if_defined "${EBPF_START}"
 source_file_if_defined "${IPSET_START}"
 
 echo "no service integrated-vtysh-config" >> /etc/frr/vtysh.conf
