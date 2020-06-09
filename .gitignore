@@ -11,5 +11,6 @@ proto_dist/*
 
 *.egg-info
 *.egg
+build/
 
 .env
