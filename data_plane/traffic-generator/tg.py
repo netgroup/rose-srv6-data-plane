@@ -129,7 +129,7 @@ channel = channel = grpc.insecure_channel(
 PUBLISH_TO_KAFKA = False
 SEND_DATA_TO_CONTROLLER = True
 
-"""
+
 def publish_data_to_kafka(_from, measure_id, generator_id, data, verbose=False):
     data['from'] = _from
     data['measure_id'] = measure_id
@@ -153,7 +153,6 @@ def publish_data_to_kafka(_from, measure_id, generator_id, data, verbose=False):
     producer.close()
     # Return result
     return result
-"""
 
 
 def send_data_to_controller(_from, measure_id,
