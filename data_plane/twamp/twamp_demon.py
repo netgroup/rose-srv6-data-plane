@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-from concurrent import futures
 import os
 import sys
 from threading import Thread
