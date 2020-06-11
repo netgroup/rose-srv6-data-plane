@@ -56,6 +56,13 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      ############################
+      # Build and install protos #
+      ############################
+      - name: Build and install protos
+        run: |
+          pip install git+https://github.com/netgroup/rose-srv6-control-plane#subdirectory=control_plane/protos
+
       ########################
       # Install dependencies #
       ########################
