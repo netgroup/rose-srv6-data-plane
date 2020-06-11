@@ -42,12 +42,6 @@ jobs:
     ##################
     steps:
 
-      ##########################
-      # Checkout the code base #
-      ##########################
-      - name: Checkout Code
-        uses: actions/checkout@master
-
       #########################
       # Pick a Python version #
       #########################
@@ -71,6 +65,12 @@ jobs:
       - name: Install data-plane modules
         run: |
           python setup.py install
+
+      ##########################
+      # Checkout the code base #
+      ##########################
+      - name: Checkout Code
+        uses: actions/checkout@master
 
       ################################
       # Run Linter against code base #
