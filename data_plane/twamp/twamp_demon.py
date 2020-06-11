@@ -121,7 +121,6 @@ class EbpfInterf():
         except EbpfException as e:
             e.print_exception()
 
-
     def rem_sidlist_out(self, sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
         print("EBPF REM sidlist", ebpf_sid_list)
