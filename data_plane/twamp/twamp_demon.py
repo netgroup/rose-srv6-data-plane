@@ -423,7 +423,7 @@ class SessionSender(Thread):
             ipv6_packet.src = "fcff:1::1"   #TODO me li da il controller?
             ipv6_packet.dst = list_rev[0]   #TODO  me li da il controller?
             #ipv6_packet.dst = 'fcff:3::1'   #TODO  me li da il controller?
-            #print("Dest", ipv6_packet.dst)
+            # print("Dest", ipv6_packet.dst)
 
             srv6_header = IPv6ExtHdrSegmentRouting()
             srv6_header.addresses = mod_sidlist
