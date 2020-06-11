@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-##############################################################################################
+##########################################################################
 # Copyright (C) 2020 Carmine Scarpitta - (Consortium GARR and University of Rome "Tor Vergata")
 # www.garr.it - www.uniroma2.it/netgroup
 #
@@ -23,6 +23,19 @@
 #
 
 
+import srv6pmServiceController_pb2_grpc
+import srv6pmServiceController_pb2
+import grpc
+from dotenv import load_dotenv
+import sys
+import logging
+import json
+from kafka import KafkaProducer
+import atexit
+import re
+from subprocess import Popen, PIPE
+from argparse import ArgumentParser
+import signal
 import os
 
 # Activate virtual environment if a venv path has been specified in .venv
@@ -46,20 +59,6 @@ if __name__ == '__main__':
             code = compile(f.read(), venv_path, 'exec')
             # Execute the activation script to activate the venv
             exec(code, {'__file__': venv_path})
-
-import signal
-from argparse import ArgumentParser
-from subprocess import Popen, PIPE
-import re
-import atexit
-
-from kafka import KafkaProducer
-import json
-
-import logging
-
-import sys
-from dotenv import load_dotenv
 
 
 # Load environment variables from .env file
@@ -113,24 +112,26 @@ DEFAULT_KAFKA_SERVER = 'kafka:9092'
 TOPIC = 'iperf'
 
 
-import grpc
-
 # SRv6PM dependencies
-import srv6pmServiceController_pb2
-import srv6pmServiceController_pb2_grpc
 
 # Controller IP and port
 grpc_ip_controller = 'fcfd:0:0:fd::1'        # TODO remove hardcoded param
 grpc_port_controller = 50051        # TODO remove hardcoded param
 # gRPC channel
 channel = channel = grpc.insecure_channel(
-    'ipv6:[%s]:%s' % (grpc_ip_controller, grpc_port_controller))        # TODO remove hardcoded param
+    'ipv6:[%s]:%s' %
+    (grpc_ip_controller, grpc_port_controller))  # TODO remove hardcoded param
 
 PUBLISH_TO_KAFKA = False
 SEND_DATA_TO_CONTROLLER = True
 
 
-def publish_data_to_kafka(_from, measure_id, generator_id, data, verbose=False):
+def publish_data_to_kafka(
+        _from,
+        measure_id,
+        generator_id,
+        data,
+        verbose=False):
     data['from'] = _from
     data['measure_id'] = measure_id
     data['generator_id'] = generator_id
@@ -199,8 +200,9 @@ def parse_data_server(data, verbose=False):
     if verbose:
         print('Parsing line:  %s' % data)
     # Search pattern
-    m = re.search(r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)',
-                  data)
+    m = re.search(
+        r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)',
+        data)
     # Group 1.	Interval
     # Group 2.	Transfer
     # Group 3.	Transfer dimension

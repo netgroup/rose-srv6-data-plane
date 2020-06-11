@@ -37,12 +37,12 @@ class MeasCtrl(Thread):
         self.scheduler = sched.scheduler(time.time, time.sleep)
 
     def startMeas(self, sidList):
-        print("CTRL: Start Meas for "+sidList)
+        print("CTRL: Start Meas for " + sidList)
         self.counter[sidList] = 0
         self.startedMeas = True
 
     def stopMeas(self, sidList):
-        print("CTRL: Stop Meas for "+sidList)
+        print("CTRL: Stop Meas for " + sidList)
         self.startedMeas = False
 
     def doMeasure(self):
@@ -53,7 +53,7 @@ class MeasCtrl(Thread):
         self.scheduler.enter(2, 1, self.doMeasure)
 
     def getMeas(self, sidList):
-        print("CTRL: Get Mead Data for "+sidList)
+        print("CTRL: Get Mead Data for " + sidList)
         return self.counter[sidList]
 
     def run(self):

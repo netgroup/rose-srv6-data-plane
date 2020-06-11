@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
 import os
 import sys
 from threading import Thread
@@ -29,8 +30,6 @@ if SRV6_PM_XDP_EBPF_PATH is None:
 SRV6_PFPLM_PATH = os.path.join(SRV6_PM_XDP_EBPF_PATH, 'srv6-pfplm/')
 
 sys.path.append(SRV6_PFPLM_PATH)
-
-from srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
 
 
 ''' ***************************************** DRIVER EBPF '''
@@ -124,7 +123,7 @@ class EbpfInterf():
         ebpf_sid_list = self.sid_list_converter(sid_list)
         print("EBPF REM sidlist", ebpf_sid_list)
         try:
-            self.epbf.pfplm_del_flow(self.EGR, ebpf_sid_list)  #da testare
+            self.epbf.pfplm_del_flow(self.EGR, ebpf_sid_list)  # da testare
         except EbpfException as e:
             e.print_exception()
 
@@ -132,12 +131,12 @@ class EbpfInterf():
         ebpf_sid_list = self.sid_list_converter(sid_list)
         print("EBPF REM sidlist", ebpf_sid_list)
         try:
-            self.epbf.pfplm_del_flow(self.ING, ebpf_sid_list)  #da testare
+            self.epbf.pfplm_del_flow(self.ING, ebpf_sid_list)  # da testare
         except EbpfException as e:
             e.print_exception()
 
     def set_color(self, color):
-        if len(self.epbfInterfsEgr) ==0:
+        if len(self.epbfInterfsEgr) == 0:
             return
 
         if(color == self.BLUE):
@@ -146,7 +145,7 @@ class EbpfInterf():
             self.epbf.pfplm_change_active_color(self.mark[self.RED])
 
     def get_color(self):
-        if len(self.epbfInterfsEgr) ==0:
+        if len(self.epbfInterfsEgr) == 0:
             return self.RED
         col = self.epbf.pfplm_get_active_color()
         if col == self.mark[0]:
@@ -164,11 +163,13 @@ class EbpfInterf():
     def read_tx_counter(self, color, sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
         print('SID LIST IN READ TX CNT', ebpf_sid_list)
-        return self.epbf.pfplm_get_flow_stats(self.EGR, ebpf_sid_list, self.mark[color])
+        return self.epbf.pfplm_get_flow_stats(
+            self.EGR, ebpf_sid_list, self.mark[color])
 
     def read_rx_counter(self, color, sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
-        return self.epbf.pfplm_get_flow_stats(self.ING, ebpf_sid_list, self.mark[color])
+        return self.epbf.pfplm_get_flow_stats(
+            self.ING, ebpf_sid_list, self.mark[color])
 
 
 ''' ***************************************** DRIVER IPSET '''
@@ -232,7 +233,7 @@ class IpSetInterf():
                 sidlist = line[line.find("[") + 2:line.find("]") - 1]
                 if sidlist == ipset_sid_list:
                     cnt = line[line.find("packets") + 8:line.find("bytes") - 1]
-                    return int(int(cnt)/2)
+                    return int(int(cnt) / 2)
 
         raise Exception('SID list not present')
 
@@ -258,9 +259,9 @@ class IpSetInterf():
 
     def get_queue_name(self, color, direction):
         if(color == self.BLUE):
-            return 'blue-ht-'+direction
+            return 'blue-ht-' + direction
         else:
-            return 'red-ht-'+direction
+            return 'red-ht-' + direction
 
 
 ''' ***************************************** TWAMP RECEIVER '''
@@ -294,7 +295,7 @@ class TestPacketReceiver(Thread):
     def run(self):
         stop_filter = None
         if self.stop_event is not None:
-            stop_filter = lambda p: self.stop_event.is_set()
+            def stop_filter(p): return self.stop_event.is_set()
         print("TestPacketReceiver Start sniffing...")
         sniff(iface=self.interface, filter="ip6", prn=self.packetRecvCallback,
               stop_filter=stop_filter)
@@ -415,24 +416,27 @@ class SessionSender(Thread):
             print('sid ist', self.monitored_path)
             # Get the counter for the color of the previuos interval
             senderBlockNumber = self.getPrevColor()
-            senderTransmitCounter = self.hwadapter.read_tx_counter(senderBlockNumber, self.monitored_path["sidlist"])
+            senderTransmitCounter = self.hwadapter.read_tx_counter(
+                senderBlockNumber, self.monitored_path["sidlist"])
             list_rev = list(self.monitored_path["sidlistrev"])
             mod_sidlist = self.set_punt(list_rev)
 
             ipv6_packet = IPv6()
-            ipv6_packet.src = "fcff:1::1"   #TODO me li da il controller?
-            ipv6_packet.dst = list_rev[0]   #TODO  me li da il controller?
-            #ipv6_packet.dst = 'fcff:3::1'   #TODO  me li da il controller?
+            ipv6_packet.src = "fcff:1::1"  # TODO me li da il controller?
+            ipv6_packet.dst = list_rev[0]  # TODO  me li da il controller?
+            # ipv6_packet.dst = 'fcff:3::1'   #TODO  me li da il controller?
             # print("Dest", ipv6_packet.dst)
 
             srv6_header = IPv6ExtHdrSegmentRouting()
             srv6_header.addresses = mod_sidlist
-            srv6_header.segleft = len(mod_sidlist)-1  #TODO vedere se funziona con NS variabile
-            srv6_header.lastentry = len(mod_sidlist)-1  #TODO vedere se funziona con NS variabile
+            # TODO vedere se funziona con NS variabile
+            srv6_header.segleft = len(mod_sidlist) - 1
+            # TODO vedere se funziona con NS variabile
+            srv6_header.lastentry = len(mod_sidlist) - 1
 
             ipv6_packet_inside = IPv6()
-            ipv6_packet_inside.src = "fd00:0:13::1" #TODO  me li da il controller?
-            ipv6_packet_inside.dst = "fd00:0:83::2" #TODO  me li da il controller?
+            ipv6_packet_inside.src = "fd00:0:13::1"  # TODO  me li da il controller?
+            ipv6_packet_inside.dst = "fd00:0:83::2"  # TODO  me li da il controller?
             ipv6_packet_inside.src = "fcff:1::1"
             ipv6_packet_inside.dst = mod_sidlist[-1]
 
@@ -453,12 +457,12 @@ class SessionSender(Thread):
 
             pkt = ipv6_packet / srv6_header / ipv6_packet_inside / udp_packet / twamp_data
 
-            print("SS - SEND QUERY SL {sl} -  SN {sn} - TXC {txc} - C {col}".format(
-                sl=mod_sidlist,
-                sn=senderSeqNum,
-                txc=senderTransmitCounter,
-                col=senderBlockNumber)
-            )
+            print(
+                "SS - SEND QUERY SL {sl} -  SN {sn} - TXC {txc} - C {col}".format(
+                    sl=mod_sidlist,
+                    sn=senderSeqNum,
+                    txc=senderTransmitCounter,
+                    col=senderBlockNumber))
             send(pkt, count=1, verbose=False)
 
             # Increase the SN
@@ -502,10 +506,11 @@ class SessionSender(Thread):
         self.monitored_path['lastMeas']['rvColor'] = resp.BlockNumber
 
     ''' Interface for the controller'''
+
     def startMeas(self, meas_id, sidList, revSidList):
         if self.startedMeas:
             return -1  # already started
-        print("SESSION SENDER: Start Meas for "+sidList)
+        print("SESSION SENDER: Start Meas for " + sidList)
 
         self.monitored_path["meas_id"] = meas_id
         self.monitored_path["sidlistgrpc"] = sidList
@@ -525,7 +530,7 @@ class SessionSender(Thread):
         return 1  # mettere in un try e semmai tronare errore
 
     def stopMeas(self, sidList):
-        print("SESSION SENDER: Stop Meas for "+sidList)
+        print("SESSION SENDER: Stop Meas for " + sidList)
 
         self.startedMeas = False
         self.hwadapter.rem_sidlist_out(self.monitored_path["sidlist"])
@@ -538,7 +543,7 @@ class SessionSender(Thread):
         return 1  # mettere in un try e semmai tronare errore
 
     def getMeas(self, sidList):
-        print("SESSION SENDER: Get Meas Data for "+sidList)
+        print("SESSION SENDER: Get Meas Data for " + sidList)
         # TODO controllare la sid_list e rilanciate un eccezione
         return self.monitored_path['lastMeas'], self.monitored_path['meas_id']
 
@@ -564,16 +569,16 @@ class SessionSender(Thread):
         date = datetime.now()
         date_timestamp = date.timestamp()
         num_interval = math.ceil(date_timestamp / self.interval)
-        return (num_interval-1) % self.numColor
+        return (num_interval - 1) % self.numColor
 
     def set_punt(self, list):
         mod_list = list
-        mod_list[0] = mod_list[0][:-3]+"200"
+        mod_list[0] = mod_list[0][:-3] + "200"
         return mod_list
 
     def rem_punt(self, list):
         mod_list = list
-        mod_list[0] = mod_list[0][:-3]+"100"
+        mod_list[0] = mod_list[0][:-3] + "100"
         return mod_list
 
 
@@ -647,9 +652,9 @@ class SessionReflector(Thread):
         srv6_header = IPv6ExtHdrSegmentRouting()
         srv6_header.addresses = mod_sidlist
         # TODO vedere se funziona con NS variabile
-        srv6_header.segleft = len(mod_sidlist)-1
+        srv6_header.segleft = len(mod_sidlist) - 1
         # TODO vedere se funziona con NS variabile
-        srv6_header.lastentry = len(mod_sidlist)-1
+        srv6_header.lastentry = len(mod_sidlist) - 1
 
         ipv6_packet_inside = IPv6()
         # ipv6_packet_inside.src = "fcff:5::1" #TODO  me li da il controller?
@@ -684,13 +689,13 @@ class SessionReflector(Thread):
         # Increse the SequenceNumber
         self.monitored_path["revTxSequenceNumber"] += 1
 
-        print("RF - SEND RESP SL {sl} - SN {sn} - TXC {txc} - C {col} - RC {rc}".format(
-            sl=mod_sidlist,
-            sn=rfSequenceNumber,
-            txc=rfTransmitCounter,
-            col=rfBlockNumber,
-            rc=rfReceiveCounter)
-        )
+        print(
+            "RF - SEND RESP SL {sl} - SN {sn} - TXC {txc} - C {col} - RC {rc}".format(
+                sl=mod_sidlist,
+                sn=rfSequenceNumber,
+                txc=rfTransmitCounter,
+                col=rfBlockNumber,
+                rc=rfReceiveCounter))
 
     def recvTWAMPTestQuery(self, packet):
         # TODO controllare che la sidlist è quella che sto monitorando
@@ -712,10 +717,16 @@ class SessionReflector(Thread):
 
     ''' Interface for the controller'''
 
-    def startMeas(self, sidList, revSidList, interval=10, margin=5, num_color=2):
+    def startMeas(
+            self,
+            sidList,
+            revSidList,
+            interval=10,
+            margin=5,
+            num_color=2):
         if self.startedMeas:
             return -1  # already started
-        print("REFLECTOR: Start Meas for "+sidList)
+        print("REFLECTOR: Start Meas for " + sidList)
 
         self.monitored_path["sidlistgrpc"] = sidList
         self.monitored_path["sidlist"] = sidList.split("/")
@@ -729,13 +740,13 @@ class SessionReflector(Thread):
         self.interval = interval
         self.margin = timedelta(milliseconds=margin)
         self.numColor = num_color
-        #pprint.pprint(self.monitored_path)
+        # pprint.pprint(self.monitored_path)
         self.hwadapter.set_sidlist_in(self.monitored_path["sidlist"])
         self.hwadapter.set_sidlist_out(self.monitored_path["returnsidlist"])
         self.startedMeas = True
 
     def stopMeas(self, sidList):
-        print("REFLECTOR: Stop Meas for "+sidList)
+        print("REFLECTOR: Stop Meas for " + sidList)
 
         self.startedMeas = False
         self.hwadapter.rem_sidlist_in(self.monitored_path["sidlist"])
@@ -769,14 +780,14 @@ class SessionReflector(Thread):
         date = datetime.now()
         date_timestamp = date.timestamp()
         num_interval = math.ceil(date_timestamp / self.interval)
-        return (num_interval-1) % self.numColor
+        return (num_interval - 1) % self.numColor
 
     def set_punt(self, list):
         mod_list = list
-        mod_list[0] = mod_list[0][:-3]+"200"
+        mod_list[0] = mod_list[0][:-3] + "200"
         return mod_list
 
     def rem_punt(self, list):
         mod_list = list
-        mod_list[0] = mod_list[0][:-3]+"100"
+        mod_list[0] = mod_list[0][:-3] + "100"
         return mod_list
