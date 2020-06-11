@@ -61,7 +61,7 @@ jobs:
       ########################
       - name: Install dependencies
         run: |
-          apt-get install build-essential python-dev libnetfilter-queue-dev
+          sudo apt-get install build-essential python-dev libnetfilter-queue-dev
           python -m pip install --upgrade pip
           pip install setuptools wheel flake8 pytest
 
