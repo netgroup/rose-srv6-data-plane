@@ -12,6 +12,8 @@ jobs:
           python-version: 3
       - name: Checkout Code
         uses: actions/checkout@v2
+        with:
+          ref: 'master'
       - name: Install dependencies
         run: |
           sudo apt-get install build-essential python-dev libnetfilter-queue-dev
