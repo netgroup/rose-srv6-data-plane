@@ -33,7 +33,6 @@ sys.path.append(SRV6_PFPLM_PATH)
 from srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
 
 
-
 ''' ***************************************** DRIVER EBPF '''
 
 
