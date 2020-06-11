@@ -503,7 +503,7 @@ class SessionSender(Thread):
         self.monitored_path['lastMeas']['rvColor'] = resp.BlockNumber
 
     ''' Interface for the controller'''
-    def startMeas(self, meas_id, sidList,revSidList):
+    def startMeas(self, meas_id, sidList, revSidList):
         if self.startedMeas:
             return -1  # already started
         print("SESSION SENDER: Start Meas for "+sidList)
