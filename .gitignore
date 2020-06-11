@@ -8,3 +8,7 @@ proto_dist/*
 *.pid
 *.log
 *.swp
+
+build/
+*.egg-info
+*.egg
