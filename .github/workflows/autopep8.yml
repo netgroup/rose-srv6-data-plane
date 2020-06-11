@@ -6,7 +6,16 @@ jobs:
     if: startsWith(github.head_ref, 'autopep8-patches') == false && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@master
+      - name: Install dependencies
+        run: |
+          sudo apt-get install build-essential python-dev libnetfilter-queue-dev
+          python -m pip install --upgrade pip
+          pip install setuptools wheel flake8 pytest
+      - name: Install data-plane modules
+        run: |
+          python setup.py install
       - name: autopep8
         id: autopep8
         uses: peter-evans/autopep8@v1
