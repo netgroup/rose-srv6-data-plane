@@ -643,7 +643,6 @@ class SessionReflector(Thread):
         ipv6_packet.src = "fcff:8::1"
         ipv6_packet.dst = self.monitored_path["returnsidlist"][0]
 
-
         mod_sidlist = self.set_punt(
             list(self.monitored_path["returnsidlistrev"]))
         srv6_header = IPv6ExtHdrSegmentRouting()
