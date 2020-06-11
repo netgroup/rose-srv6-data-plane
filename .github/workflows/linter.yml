@@ -60,5 +60,32 @@ jobs:
       ################################
       # Run Linter against code base #
       ################################
-      - name: Lint Code Base
-        uses: github/super-linter@v1.0.0
+      - name: Python Code Quality and Lint
+        uses: ricardochaves/python-lint@v1.1.0
+        #with:
+          # A list of all paths to test
+          #python-root-list: # optional, default is .
+          # Use Pylint
+          #use-pylint: # optional, default is true
+          # Use pycodestyle
+          #use-pycodestyle: # optional, default is true
+          # Use Flake8
+          #use-flake8: # optional, default is true
+          # Use Black
+          #use-black: # optional, default is true
+          # Use mypy
+          #use-mypy: # optional, default is true
+          # Use isort
+          #use-isort: # optional, default is true
+          # Extra options: pylint $(extra-pylint-options) $(python-root-list)
+          #extra-pylint-options: # optional, default is 
+          # Extra options: pycodestyle $(extra-pycodestyle-options) $(python-root-list)
+          #extra-pycodestyle-options: # optional, default is 
+          # Extra options: flake8 $(extra-flake8-options) $(python-root-list)
+          #extra-flake8-options: # optional, default is 
+          # Extra options: black --check $(extra-black-options) $(python-root-list)
+          #extra-black-options: # optional, default is 
+          # Extra options: mypy $(extra-mypy-options) $(python-root-list)
+          #extra-mypy-options: # optional, default is 
+          # Extra options: isort -rc $(extra-isort-options) $(python-root-list) -c --diff 
+          #extra-isort-options: # optional, default is 
