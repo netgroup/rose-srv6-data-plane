@@ -2,7 +2,7 @@
 
 readonly BASE_DIR="nodeconf"
 readonly COMMON_DIR="common"
-readonly NODE_NAME="r8"
+readonly NODE_NAME="r1"
 readonly FRR_PATH="/usr/lib/frr"
 
 # Punt interfce name
@@ -51,7 +51,9 @@ sysctl -w net.ipv6.conf.all.forwarding=1
   #echo 0 > $i
 #done
 
-source_file_if_defined "${EBPF_START}"
+mount -t bpf bpf /sys/fs/bpf/
+
+# source_file_if_defined "${EBPF_START}"
 source_file_if_defined "${IPSET_START}"
 
 echo "no service integrated-vtysh-config" >> /etc/frr/vtysh.conf

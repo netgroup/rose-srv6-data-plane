@@ -1,31 +1,7 @@
 #!/usr/bin/python
 
-import os
-
-# Activate virtual environment if a venv path has been specified in .venv
-# This must be executed only if this file has been executed as a
-# script (instead of a module)
-if __name__ == '__main__':
-    # Check if .venv file exists
-    if os.path.exists('.venv'):
-        with open('.venv', 'r') as venv_file:
-            # Get virtualenv path from .venv file
-            # and remove trailing newline chars
-            venv_path = venv_file.read().rstrip()
-        # Get path of the activation script
-        venv_path = os.path.join(venv_path, 'bin/activate_this.py')
-        if not os.path.exists(venv_path):
-            print('Virtual environment path specified in .venv '
-                  'points to an invalid path\n')
-            exit(-2)
-        with open(venv_path) as f:
-            # Read the activation script
-            code = compile(f.read(), venv_path, 'exec')
-            # Execute the activation script to activate the venv
-            exec(code, {'__file__': venv_path})
-
 from concurrent import futures
-from dotenv import load_dotenv
+import os
 import sys
 import grpc
 import logging
@@ -41,93 +17,77 @@ import shlex
 from scapy.all import send, sniff
 from scapy.layers.inet import UDP
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrSegmentRouting
-import twamp
+from data_plane.twamp import twamp
 
-# Load environment variables from .env file
-load_dotenv()
+import netifaces
 
 # Folder containing this script
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-# Folder containing the SRV6_PFPLM files
-SRV6_PFPLM_PATH = '/home/rose/workspace/srv6_pfplm'
-
-# Environment variables have priority over hardcoded paths
-# If an environment variable is set, we must use it instead of
-# the hardcoded constant
-if os.getenv('SRV6_PFPLM_PATH') is not None:
-    # Check if the SRV6_PFPLM_PATH variable is set
-    if os.getenv('SRV6_PFPLM_PATH') == '':
-        print('Error : Set SRV6_PFPLM_PATH variable in .env\n')
-        sys.exit(-2)
-    # Check if the SRV6_PFPLM_PATH variable points to an existing folder
-    if not os.path.exists(os.getenv('SRV6_PFPLM_PATH')):
-        print('Error : SRV6_PFPLM_PATH variable in '
-              '.env points to a non existing folder')
-        sys.exit(-2)
-    # SRV6_PFPLM_PATH in .env is correct. We use it.
-    SRV6_PFPLM_PATH = os.getenv('SRV6_PFPLM_PATH')
-else:
-    # SRV6_PFPLM_PATH in .env is not set, we use the hardcoded path
-    #
-    # Check if the SRV6_PFPLM_PATH variable is set
-    if SRV6_PFPLM_PATH == '':
-        print('Error : Set SRV6_PFPLM_PATH variable in .env or %s' %
-              sys.argv[0])
-        sys.exit(-2)
-    # Check if the SRV6_PFPLM_PATH variable points to an existing folder
-    if not os.path.exists(SRV6_PFPLM_PATH):
-        print('Error : SRV6_PFPLM_PATH variable in '
-              '%s points to a non existing folder' % sys.argv[0])
-        print('Error : Set SRV6_PFPLM_PATH variable in .env or %s\n' %
-              sys.argv[0])
-        sys.exit(-2)
-
 # SRv6 PFPLM dependencies
+SRV6_PM_XDP_EBPF_PATH = os.getenv('SRV6_PM_XDP_EBPF_PATH', None)
+if SRV6_PM_XDP_EBPF_PATH is None:
+    print('SRV6_PM_XDP_EBPF_PATH environment variable not set')
+    exit(-2)
+SRV6_PFPLM_PATH = os.path.join(SRV6_PM_XDP_EBPF_PATH, 'srv6-pfplm/')
+
 sys.path.append(SRV6_PFPLM_PATH)
 
-from xdp_srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
+from srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
+
 
 
 ''' ***************************************** DRIVER EBPF '''
 
 
 class EbpfInterf():
-    def __init__(self):
-        self.inDriver = EbpfPFPLM()
-        self.outDriver = EbpfPFPLM()
-        self.outInterface = None
-        self.inInterface = None
+    def __init__(self, in_interfaces=[], out_interfaces=[]):
+        if len(in_interfaces) == 0:
+            in_interfaces = netifaces.interfaces()
+        if len(out_interfaces) == 0:
+            out_interfaces = netifaces.interfaces()
+
         self.BLUE = 1
         self.RED = 0
         self.mark = [1, 2]
+        self.epbfInterfsEgr = out_interfaces
+        self.epbfInterfsIng = in_interfaces
 
-    def start(self, outInterface, inInterface):
         try:
-            self.inInterface = inInterface
-            self.outInterface = outInterface
+            self.epbf = EbpfPFPLM()
+            self.EGR = self.epbf.lib.FLOW_DIR_EGRESS
+            self.ING = self.epbf.lib.FLOW_DIR_INGRESS
 
-            self.inDriver.pfplm_load(
-                self.inInterface, self.inDriver.lib.XDP_PROG_DIR_INGRESS,
-                self.inDriver.lib.F_VERBOSE | self.inDriver.lib.F_FORCE)
+            for intf in in_interfaces:
+                try:
+                    self.epbf.load_ingress(intf)
+                except EbpfException as e:
+                    e.print_exception()
+            for intf in out_interfaces:
+                try:
+                    self.epbf.load_egress(intf)
+                except EbpfException as e:
+                    e.print_exception()
 
-            self.outDriver.pfplm_load(
-                self.outInterface, self.outDriver.lib.XDP_PROG_DIR_EGRESS,
-                self.outDriver.lib.F_VERBOSE | self.outDriver.lib.F_FORCE)
-            self.outDriver.pfplm_change_active_color(
-                self.outInterface, self.mark[self.BLUE])
+            self.epbf.pfplm_change_active_color(self.mark[self.BLUE])
+
         except EbpfException as e:
             e.print_exception()
 
     def stop(self):
+        print('Deallocating EbpfInterf object')
         try:
-            self.inDriver.pfplm_unload(
-                self.inInterface, self.inDriver.lib.XDP_PROG_DIR_INGRESS,
-                self.inDriver.lib.F_VERBOSE | self.inDriver.lib.F_FORCE)
+            for intf in self.epbfInterfsIng:
+                try:
+                    self.epbf.unload_ingress(intf)
+                except EbpfException as e:
+                    e.print_exception()
+            for intf in self.epbfInterfsEgr:
+                try:
+                    self.epbf.unload_egress(intf)
+                except EbpfException as e:
+                    e.print_exception()
 
-            self.outDriver.pfplm_unload(
-                self.outInterface, self.outDriver.lib.XDP_PROG_DIR_EGRESS,
-                self.outDriver.lib.F_VERBOSE | self.outDriver.lib.F_FORCE)
         except EbpfException as e:
             e.print_exception()
 
@@ -135,29 +95,41 @@ class EbpfInterf():
         return ",".join(sid_list)
 
     def set_sidlist_out(self, sid_list):
+        # if interf not in self.epbfInterfsEgr:
+        #     try:
+        #         EbpfPFPLM.load_egress(interf)
+        #     except EbpfException as e:
+        #         e.print_exception()
+        #     self.epbfInterfsEgr.append(interf)
+
         ebpf_sid_list = self.sid_list_converter(sid_list)
         print("EBPF INS OUT sidlist", ebpf_sid_list)
         try:
-            self.outDriver.pfplm_add_flow(
-                self.outInterface, ebpf_sid_list)  # da testare
+            self.epbf.pfplm_add_flow(self.EGR, ebpf_sid_list)
         except EbpfException as e:
             e.print_exception()
 
     def set_sidlist_in(self, sid_list):
+        # if interf not in self.epbfInterfsIng:
+        #     try:
+        #         EbpfPFPLM.load_ingress(interf)
+        #     except EbpfException as e:
+        #         e.print_exception()
+        #     self.epbfInterfsIng.append(interf)
+
         ebpf_sid_list = self.sid_list_converter(sid_list)
         print("EBPF INS IN sidlist", ebpf_sid_list)
         try:
-            self.inDriver.pfplm_add_flow(
-                self.inInterface, ebpf_sid_list)  # da testare
+            self.epbf.pfplm_add_flow(self.ING, ebpf_sid_list)
         except EbpfException as e:
             e.print_exception()
+
 
     def rem_sidlist_out(self, sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
         print("EBPF REM sidlist", ebpf_sid_list)
         try:
-            self.outDriver.pfplm_del_flow(
-                self.outInterface, ebpf_sid_list)  # da testare
+            self.epbf.pfplm_del_flow(self.EGR, ebpf_sid_list)  #da testare
         except EbpfException as e:
             e.print_exception()
 
@@ -165,28 +137,43 @@ class EbpfInterf():
         ebpf_sid_list = self.sid_list_converter(sid_list)
         print("EBPF REM sidlist", ebpf_sid_list)
         try:
-            self.inDriver.pfplm_del_flow(
-                self.inInterface, ebpf_sid_list)  # da testare
+            self.epbf.pfplm_del_flow(self.ING, ebpf_sid_list)  #da testare
         except EbpfException as e:
             e.print_exception()
 
     def set_color(self, color):
+        if len(self.epbfInterfsEgr) ==0:
+            return
+
         if(color == self.BLUE):
-            self.outDriver.pfplm_change_active_color(
-                self.outInterface, self.mark[self.BLUE])
+            self.epbf.pfplm_change_active_color(self.mark[self.BLUE])
         else:
-            self.outDriver.pfplm_change_active_color(
-                self.outInterface, self.mark[self.RED])
+            self.epbf.pfplm_change_active_color(self.mark[self.RED])
+
+    def get_color(self):
+        if len(self.epbfInterfsEgr) ==0:
+            return self.RED
+        col = self.epbf.pfplm_get_active_color()
+        if col == self.mark[0]:
+            return self.RED
+        else:
+            return self.BLUE
+        return -1
+
+    def toggle_color(self):
+        if(self.get_color() == self.BLUE):
+            self.epbf.pfplm_change_active_color(self.mark[self.RED])
+        else:
+            self.epbf.pfplm_change_active_color(self.mark[self.BLUE])
 
     def read_tx_counter(self, color, sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
-        return self.outDriver.pfplm_get_flow_stats(
-            self.outInterface, ebpf_sid_list, self.mark[color])
+        print('SID LIST IN READ TX CNT', ebpf_sid_list)
+        return self.epbf.pfplm_get_flow_stats(self.EGR, ebpf_sid_list, self.mark[color])
 
     def read_rx_counter(self, color, sid_list):
         ebpf_sid_list = self.sid_list_converter(sid_list)
-        return self.inDriver.pfplm_get_flow_stats(
-            self.inInterface, ebpf_sid_list, self.mark[color])
+        return self.epbf.pfplm_get_flow_stats(self.ING, ebpf_sid_list, self.mark[color])
 
 
 ''' ***************************************** DRIVER IPSET '''
@@ -198,12 +185,6 @@ class IpSetInterf():
         self.BLUE = 1
         self.RED = 0
         self.state = self.BLUE  # base conf use blue queue
-
-    def start(self, outInterface, inInterface):
-        pass
-
-    def stop(self):
-        pass
 
     def sid_list_converter(self, sid_list):
         return " ".join(sid_list)
@@ -291,14 +272,15 @@ class IpSetInterf():
 
 
 class TestPacketReceiver(Thread):
-    def __init__(self, interface, sender,
-                 reflector, ss_udp_port=1206, refl_udp_port=1205):
+    def __init__(self, interface, sender, reflector,
+                 ss_udp_port=1206, refl_udp_port=1205, stop_event=None):
         Thread.__init__(self)
         self.interface = interface
         self.SessionSender = sender
         self.SessionReflector = reflector
         self.ss_udp_port = ss_udp_port
         self.refl_udp_port = refl_udp_port
+        self.stop_event = stop_event
 
     def packetRecvCallback(self, packet):
         # TODO passate dal controller per connessione!!!
@@ -315,8 +297,12 @@ class TestPacketReceiver(Thread):
                 print(packet.show())
 
     def run(self):
+        stop_filter = None
+        if self.stop_event is not None:
+            stop_filter = lambda p: self.stop_event.is_set()
         print("TestPacketReceiver Start sniffing...")
-        sniff(iface=self.interface, filter="ip6", prn=self.packetRecvCallback)
+        sniff(iface=self.interface, filter="ip6", prn=self.packetRecvCallback,
+              stop_filter=stop_filter)
         print("TestPacketReceiver Stop sniffing")
         # codice netqueue
 
@@ -325,7 +311,7 @@ class TestPacketReceiver(Thread):
 
 
 class SessionSender(Thread):
-    def __init__(self, driver):
+    def __init__(self, driver, stop_event=None):
         Thread.__init__(self)
         self.startedMeas = False
 
@@ -342,6 +328,8 @@ class SessionSender(Thread):
         self.hwadapter = driver
         self.scheduler = sched.scheduler(time.time, time.sleep)
         # self.startMeas("fcff:3::1/fcff:4::1/fcff:5::1","fcff:4::1/fcff:3::1/fcff:2::1","#test")
+
+        self.stop_event = stop_event
 
     # def send_meas_data_to_controller(self):     # TODO fix hardcoded params
     #     import random
@@ -407,8 +395,11 @@ class SessionSender(Thread):
             color = self.getColor()
             self.hwadapter.set_color(color)
 
-        ccTime = time.mktime(self.getNexttimeToChangeColor().timetuple())
-        self.scheduler.enterabs(ccTime, 1, self.runChangeColor)
+        if self.stop_event is not None and self.stop_event.is_set():
+            print('Terminating runChangeColor')
+        else:
+            ccTime = time.mktime(self.getNexttimeToChangeColor().timetuple())
+            self.scheduler.enterabs(ccTime, 1, self.runChangeColor)
 
     def runMeasure(self):
         if self.startedMeas:
@@ -416,41 +407,39 @@ class SessionSender(Thread):
             self.sendTWAMPTestQuery()
 
         # Schedule next measure
-        dmTime = time.mktime(self.getNexttimeToMeasure().timetuple())
-        self.scheduler.enterabs(dmTime, 1, self.runMeasure)
+        if self.stop_event is not None and self.stop_event.is_set():
+            print('Terminating runMeasure')
+        else:
+            dmTime = time.mktime(self.getNexttimeToMeasure().timetuple())
+            self.scheduler.enterabs(dmTime, 1, self.runMeasure)
 
     ''' TWAMP methods '''
 
     def sendTWAMPTestQuery(self):
         try:
+            print('sid ist', self.monitored_path)
             # Get the counter for the color of the previuos interval
             senderBlockNumber = self.getPrevColor()
-            senderTransmitCounter = self.hwadapter.read_tx_counter(
-                senderBlockNumber, self.monitored_path["sidlist"])
+            senderTransmitCounter = self.hwadapter.read_tx_counter(senderBlockNumber, self.monitored_path["sidlist"])
+            list_rev = list(self.monitored_path["sidlistrev"])
+            mod_sidlist = self.set_punt(list_rev)
 
             ipv6_packet = IPv6()
-            # ipv6_packet.src = "fcff:1::1" #TODO me li da il controller?
-            # ipv6_packet.dst = "fcff:4::1" #TODO  me li da il controller?
-            ipv6_packet.src = "fcf0:0:1:2::1"
-            ipv6_packet.dst = self.monitored_path["sidlist"][0]
-
-            mod_sidlist = self.set_punt(
-                list(self.monitored_path["sidlistrev"]))
+            ipv6_packet.src = "fcff:1::1"   #TODO me li da il controller?
+            ipv6_packet.dst = list_rev[0]   #TODO  me li da il controller?
+            #ipv6_packet.dst = 'fcff:3::1'   #TODO  me li da il controller?
+            #print("Dest", ipv6_packet.dst)
 
             srv6_header = IPv6ExtHdrSegmentRouting()
             srv6_header.addresses = mod_sidlist
-            # TODO vedere se funziona con NS variabile
-            srv6_header.segleft = len(mod_sidlist)-1
-            # TODO vedere se funziona con NS variabile
-            srv6_header.lastentry = len(mod_sidlist)-1
+            srv6_header.segleft = len(mod_sidlist)-1  #TODO vedere se funziona con NS variabile
+            srv6_header.lastentry = len(mod_sidlist)-1  #TODO vedere se funziona con NS variabile
 
             ipv6_packet_inside = IPv6()
-            # ipv6_packet_inside.src = "fd00:0:13::1" #TODO  me li da il
-            # controller?
-            # ipv6_packet_inside.dst = "fd00:0:83::2" #TODO  me li da il
-            # controller?
+            ipv6_packet_inside.src = "fd00:0:13::1" #TODO  me li da il controller?
+            ipv6_packet_inside.dst = "fd00:0:83::2" #TODO  me li da il controller?
             ipv6_packet_inside.src = "fcff:1::1"
-            ipv6_packet_inside.dst = self.monitored_path["sidlist"][-1]
+            ipv6_packet_inside.dst = mod_sidlist[-1]
 
             udp_packet = UDP()
             udp_packet.dport = self.refl_udp_port
@@ -518,13 +507,10 @@ class SessionSender(Thread):
         self.monitored_path['lastMeas']['rvColor'] = resp.BlockNumber
 
     ''' Interface for the controller'''
-
-    def startMeas(self, meas_id, sidList, revSidList, inInterface, outInterface):
+    def startMeas(self, meas_id, sidList,revSidList):
         if self.startedMeas:
             return -1  # already started
         print("SESSION SENDER: Start Meas for "+sidList)
-
-        self.hwadapter.start(outInterface, inInterface)
 
         self.monitored_path["meas_id"] = meas_id
         self.monitored_path["sidlistgrpc"] = sidList
@@ -545,8 +531,6 @@ class SessionSender(Thread):
 
     def stopMeas(self, sidList):
         print("SESSION SENDER: Stop Meas for "+sidList)
-
-        self.hwadapter.stop()
 
         self.startedMeas = False
         self.hwadapter.rem_sidlist_out(self.monitored_path["sidlist"])
@@ -602,7 +586,7 @@ class SessionSender(Thread):
 
 
 class SessionReflector(Thread):
-    def __init__(self, driver):
+    def __init__(self, driver, stop_event=None):
         Thread.__init__(self)
         self.name = "SessionReflector"
         self.startedMeas = False
@@ -620,6 +604,8 @@ class SessionReflector(Thread):
         # per ora non lo uso è per il cambio di colore
         self.scheduler = sched.scheduler(time.time, time.sleep)
 
+        self.stop_event = stop_event
+
     def run(self):
         # enter(delay, priority, action, argument=(), kwargs={})
         print("SessionReflector start")
@@ -635,14 +621,16 @@ class SessionReflector(Thread):
             color = self.getColor()
             self.hwadapter.set_color(color)
 
-        ccTime = time.mktime(self.getNexttimeToChangeColor().timetuple())
-        self.scheduler.enterabs(ccTime, 1, self.runChangeColor)
+        if self.stop_event is not None and self.stop_event.is_set():
+            print('Terminating runChangeColor')
+        else:
+            ccTime = time.mktime(self.getNexttimeToChangeColor().timetuple())
+            self.scheduler.enterabs(ccTime, 1, self.runChangeColor)
 
     ''' TWAMP methods '''
 
     def sendTWAMPTestResponse(self, sid_list, sender_block_color,
                               sender_counter, sender_seq_num):
-
         # Read the RX counter FW path
         nopunt_sid_list = self.rem_punt(sid_list)[::-1]  # no punt and reversed
         rfReceiveCounter = self.hwadapter.read_rx_counter(
@@ -730,12 +718,10 @@ class SessionReflector(Thread):
 
     ''' Interface for the controller'''
 
-    def startMeas(self, sidList, revSidList, inInterface, outInterface):
+    def startMeas(self, sidList, revSidList, interval=10, margin=5, num_color=2):
         if self.startedMeas:
             return -1  # already started
         print("REFLECTOR: Start Meas for "+sidList)
-
-        self.hwadapter.start(outInterface, inInterface)
 
         self.monitored_path["sidlistgrpc"] = sidList
         self.monitored_path["sidlist"] = sidList.split("/")
@@ -745,15 +731,17 @@ class SessionReflector(Thread):
         self.monitored_path["returnsidlistrev"] = \
             self.monitored_path["returnsidlist"][::-1]
         self.monitored_path["revTxSequenceNumber"] = 0
-        # pprint.pprint(self.monitored_path)
+        # Set color options
+        self.interval = interval
+        self.margin = timedelta(milliseconds=margin)
+        self.numColor = num_color
+        #pprint.pprint(self.monitored_path)
         self.hwadapter.set_sidlist_in(self.monitored_path["sidlist"])
         self.hwadapter.set_sidlist_out(self.monitored_path["returnsidlist"])
         self.startedMeas = True
 
     def stopMeas(self, sidList):
         print("REFLECTOR: Stop Meas for "+sidList)
-
-        self.hwadapter.stop()
 
         self.startedMeas = False
         self.hwadapter.rem_sidlist_in(self.monitored_path["sidlist"])
