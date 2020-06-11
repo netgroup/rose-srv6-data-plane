@@ -9,6 +9,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 
+# Read dependencies from requirements.txt
 proj_dir = os.path.dirname(os.path.realpath(__file__))
 requirements_path = os.path.join(proj_dir, 'requirements.txt')
 install_requires = []
@@ -24,8 +25,6 @@ packages = [
 setuptools.setup(
     name="rose-srv6-data-plane",
     version="0.0.1",
-    author="Carmine Scarpitta",
-    author_email="carmine.scarpitta@uniroma2.it",
     description="Collection of data-plane modules for a node",
     long_description=long_description,
     long_description_content_type="text/markdown",

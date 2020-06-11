@@ -30,7 +30,7 @@ if SRV6_PM_XDP_EBPF_PATH is None:
     print('SRV6_PM_XDP_EBPF_PATH environment variable not set')
     exit(-2)
 SRV6_PFPLM_PATH = os.path.join(SRV6_PM_XDP_EBPF_PATH, 'srv6-pfplm/')
-print(SRV6_PFPLM_PATH)
+
 sys.path.append(SRV6_PFPLM_PATH)
 
 from srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
