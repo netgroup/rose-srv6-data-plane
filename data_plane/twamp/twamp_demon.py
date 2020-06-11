@@ -3,7 +3,6 @@
 from concurrent import futures
 import os
 import sys
-import grpc
 import logging
 from threading import Thread
 import sched
