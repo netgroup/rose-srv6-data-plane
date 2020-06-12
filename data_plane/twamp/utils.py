@@ -13,5 +13,5 @@ def rem_punt(list):
     return mod_list
 
 
-def sid_list_converter(self, sid_list):
+def sid_list_converter(sid_list):
     return ",".join(sid_list)
