@@ -61,7 +61,7 @@ jobs:
       ##############################
       - name: Set up Python virtual environment
         run: |
-          python -p venv python${{ matrix.python-version }}-venv
+          python -m venv python${{ matrix.python-version }}-venv
           source python${{ matrix.python-version }}-venv/bin/activate
 
       ########################
