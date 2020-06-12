@@ -1,6 +1,15 @@
 #!/usr/bin/python
 
-from scapy.all import *
+from scapy.all import (Packet,
+                       IntField,
+                       LongField,
+                       BitEnumField,
+                       BitField,
+                       ByteField,
+                       ShortField,
+                       ThreeBytesField,
+                       ByteEnumField,
+                       XByteField)
 
 
 class TWAMPTestQuery(Packet):
@@ -15,8 +24,9 @@ class TWAMPTestQuery(Packet):
                    ByteField("BlockNumber", 0),
                    ShortField("MBZ", 0),
                    ThreeBytesField("MBZ", 0),
-                   ByteEnumField("SenderControlCode", 0, {0: "Out-of-band Response Requested",
-                                                          1: "In-band Response Requested"})
+                   ByteEnumField("SenderControlCode", 0,
+                                 {0: "Out-of-band Response Requested",
+                                  1: "In-band Response Requested"})
                    ]  # manca il padding
 
 
@@ -37,5 +47,6 @@ class TWAMPTestResponse(Packet):
                    BitField("MBZ", 0, 6),
                    XByteField("SenderBlockNumber", 0),
                    XByteField("MBZ", 0),
-                   ByteEnumField("ReceverControlCode", 0, {1: "Error - Invalid Message"}),
+                   ByteEnumField("ReceverControlCode", 0, {
+                                 1: "Error - Invalid Message"}),
                    XByteField("SenderTTL", 0)]  # manca il padding
