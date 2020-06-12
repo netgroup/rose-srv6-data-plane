@@ -85,6 +85,8 @@ jobs:
       ##############################
       - name: Install data-plane modules
         run: |
+          # Activate virtualenv
+          source python${{ matrix.python-version }}-venv/bin/activate
           # Setup data-plane modules
           python setup.py install
 
