@@ -186,96 +186,96 @@ class EbpfInterf():
             self.igr, ebpf_sid_list, self.mark[color])
 
 
-''' ***************************************** DRIVER IPSET '''
+# ''' ***************************************** DRIVER IPSET '''
 
 
-class IpSetInterf():
-    def __init__(self):
-        self.interface = ""
-        self.blue = 1
-        self.red = 0
-        self.state = self.blue  # base conf use blue queue
+# class IpSetInterf():
+#     def __init__(self):
+#         self.interface = ""
+#         self.blue = 1
+#         self.red = 0
+#         self.state = self.blue  # base conf use blue queue
 
-    def sid_list_converter(self, sid_list):
-        return " ".join(sid_list)
+#     def sid_list_converter(self, sid_list):
+#         return " ".join(sid_list)
 
-    def set_sidlist(self, sid_list):
-        ipset_sid_list = self.sid_list_converter(sid_list)
-        # TODO implementare se serve
-        # print("IPSET new sidlist",ipset_sid_list)
+#     def set_sidlist(self, sid_list):
+#         ipset_sid_list = self.sid_list_converter(sid_list)
+#         # TODO implementare se serve
+#         # print("IPSET new sidlist",ipset_sid_list)
 
-    def rem_sidlist(self, sid_list):
-        ipset_sid_list = self.sid_list_converter(sid_list)
-        # TODO implementare se serve
-        # print("IPSET rem sidlist",ipset_sid_list)
+#     def rem_sidlist(self, sid_list):
+#         ipset_sid_list = self.sid_list_converter(sid_list)
+#         # TODO implementare se serve
+#         # print("IPSET rem sidlist",ipset_sid_list)
 
-    def set_color(self, color):
-        if self.state == color:  # no need to change
-            return
-        if color == self.blue:
-            self.set_blue_queue()
-            self.state = self.blue
-        else:
-            self.set_red_queue()
-            self.state = self.red
+#     def set_color(self, color):
+#         if self.state == color:  # no need to change
+#             return
+#         if color == self.blue:
+#             self.set_blue_queue()
+#             self.state = self.blue
+#         else:
+#             self.set_red_queue()
+#             self.state = self.red
 
-    def set_red_queue(self):
-        # print('IPSET RED QUEUE')
-        cmd = "ip6tables -D POSTROUTING -t mangle -m rt --rt-type 4 -j blue-out"
-        shlex.split(cmd)
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, shell=True)
+#     def set_red_queue(self):
+#         # print('IPSET RED QUEUE')
+#         cmd = "ip6tables -D POSTROUTING -t mangle -m rt --rt-type 4 -j blue-out"
+#         shlex.split(cmd)
+#         result = subprocess.run(cmd, stdout=subprocess.PIPE, shell=True)
 
-    def set_blue_queue(self):
-        # print('IPSET BLUE QUEUE')
-        cmd = "ip6tables -I POSTROUTING 1 -t mangle -m rt --rt-type 4 -j blue-out"
-        shlex.split(cmd)
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, shell=True)
+#     def set_blue_queue(self):
+#         # print('IPSET BLUE QUEUE')
+#         cmd = "ip6tables -I POSTROUTING 1 -t mangle -m rt --rt-type 4 -j blue-out"
+#         shlex.split(cmd)
+#         result = subprocess.run(cmd, stdout=subprocess.PIPE, shell=True)
 
-    def read_tx_counter(self, color, sid_list):
-        ipset_sid_list = self.sid_list_converter(sid_list)
-        queue_name = self.get_queue_name(color, "out")
-        # print('IPSET READ TX COUNTER', color, ipset_sid_list,queue_name)
-        result = subprocess.run(
-            ['ipset', 'list', queue_name], stdout=subprocess.PIPE)
-        res_arr = result.stdout.decode('utf-8').splitlines()
+#     def read_tx_counter(self, color, sid_list):
+#         ipset_sid_list = self.sid_list_converter(sid_list)
+#         queue_name = self.get_queue_name(color, "out")
+#         # print('IPSET READ TX COUNTER', color, ipset_sid_list,queue_name)
+#         result = subprocess.run(
+#             ['ipset', 'list', queue_name], stdout=subprocess.PIPE)
+#         res_arr = result.stdout.decode('utf-8').splitlines()
 
-        if not res_arr[0].startswith("Name:"):
-            raise Exception('Queue not present')
+#         if not res_arr[0].startswith("Name:"):
+#             raise Exception('Queue not present')
 
-        for line in res_arr:
-            if line.startswith("segs"):
-                sidlist = line[line.find("[") + 2:line.find("]") - 1]
-                if sidlist == ipset_sid_list:
-                    cnt = line[line.find("packets") + 8:line.find("bytes") - 1]
-                    return int(int(cnt) / 2)
+#         for line in res_arr:
+#             if line.startswith("segs"):
+#                 sidlist = line[line.find("[") + 2:line.find("]") - 1]
+#                 if sidlist == ipset_sid_list:
+#                     cnt = line[line.find("packets") + 8:line.find("bytes") - 1]
+#                     return int(int(cnt) / 2)
 
-        raise Exception('SID list not present')
+#         raise Exception('SID list not present')
 
-    def read_rx_counter(self, color, sid_list):
-        ipset_sid_list = self.sid_list_converter(sid_list)
-        queue_name = self.get_queue_name(color, "in")
-        # print('IPSET READ RX COUNTER', color, ipset_sid_list,queue_name)
-        result = subprocess.run(
-            ['ipset', 'list', queue_name], stdout=subprocess.PIPE)
-        res_arr = result.stdout.decode('utf-8').splitlines()
+#     def read_rx_counter(self, color, sid_list):
+#         ipset_sid_list = self.sid_list_converter(sid_list)
+#         queue_name = self.get_queue_name(color, "in")
+#         # print('IPSET READ RX COUNTER', color, ipset_sid_list,queue_name)
+#         result = subprocess.run(
+#             ['ipset', 'list', queue_name], stdout=subprocess.PIPE)
+#         res_arr = result.stdout.decode('utf-8').splitlines()
 
-        if not res_arr[0].startswith("Name:"):
-            raise Exception('Queue not present')
+#         if not res_arr[0].startswith("Name:"):
+#             raise Exception('Queue not present')
 
-        for line in res_arr:
-            if line.startswith("segs"):
-                sidlist = line[line.find("[") + 2:line.find("]") - 1]
-                if sidlist == ipset_sid_list:
-                    cnt = line[line.find("packets") + 8:line.find("bytes") - 1]
-                    return int(cnt)
+#         for line in res_arr:
+#             if line.startswith("segs"):
+#                 sidlist = line[line.find("[") + 2:line.find("]") - 1]
+#                 if sidlist == ipset_sid_list:
+#                     cnt = line[line.find("packets") + 8:line.find("bytes") - 1]
+#                     return int(cnt)
 
-        raise Exception('SID list not present')
+#         raise Exception('SID list not present')
 
-    def get_queue_name(self, color, direction):
-        if color == self.blue:
-            return 'blue-ht-' + direction
-        else:
-            return 'red-ht-' + direction
+#     def get_queue_name(self, color, direction):
+#         if color == self.blue:
+#             return 'blue-ht-' + direction
+#         else:
+#             return 'red-ht-' + direction
 
 
 ''' ***************************************** TWAMP RECEIVER '''
