@@ -311,8 +311,11 @@ class TestPacketReceiver(Thread):
         if self.stop_event is not None:
             def stop_filter(p): return self.stop_event.is_set()
         print("TestPacketReceiver Start sniffing...")
-        sniff(iface=self.interface, filter="ip6", prn=self.packet_recv_callback,
-              stop_filter=stop_filter)
+        sniff(
+            iface=self.interface,
+            filter="ip6",
+            prn=self.packet_recv_callback,
+            stop_filter=stop_filter)
         print("TestPacketReceiver Stop sniffing")
         # codice netqueue
 
