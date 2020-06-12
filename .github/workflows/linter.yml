@@ -56,6 +56,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      ##############################
+      # Set up a Python virtualenv #
+      ##############################
+      - name: Set up Python virtual environment
+        run: |
+          python -p venv python${{ matrix.python-version }}-venv
+          source python${{ matrix.python-version }}-venv/bin/activate
+
       ########################
       # Install dependencies #
       ########################
