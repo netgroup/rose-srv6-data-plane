@@ -61,57 +61,63 @@ jobs:
       ##############################
       - name: Set up Python virtual environment
         run: |
+          # Create a virtualenv
           python -m venv python${{ matrix.python-version }}-venv
+          # Activate virtualenv
           source python${{ matrix.python-version }}-venv/bin/activate
-          # echo "::set-env name=PATH::$HOME/python${{ matrix.python-version }}-venv/bin/"
-          echo "::add-path::$HOME/python${{ matrix.python-version }}-venv/bin"
-          echo "::set-env name=pythonLocation::$HOME/python${{ matrix.python-version }}-venv"
 
       ########################
       # Install dependencies #
       ########################
       - name: Install dependencies
-        run: |
+        run: |          
+          # Activate virtualenv
+          source python${{ matrix.python-version }}-venv/bin/activate
+          # Install dependencies required by NetfilterQueue
           sudo apt-get install build-essential python-dev libnetfilter-queue-dev
+          # Upgrade pip
           python -m pip install --upgrade pip
-          pip install setuptools wheel flake8 pytest
+          # Install linters and other python modules
+          pip install pylint pycodestyle flake8 black mypy isort setuptools wheel pytest
 
       ##############################
       # Install data-plane modules #
       ##############################
       - name: Install data-plane modules
         run: |
+          # Setup data-plane modules
           python setup.py install
 
       ################################
       # Run Linter against code base #
       ################################
       - name: Python Code Quality and Lint
-        uses: ricardochaves/python-lint@v1.1.0
-        with:
-          # A list of all paths to test
-          python-root-list: data_plane  # optional, default is .
-          # Use Pylint
-          #use-pylint: # optional, default is true
-          # Use pycodestyle
-          #use-pycodestyle: # optional, default is true
-          # Use Flake8
-          #use-flake8: # optional, default is true
-          # Use Black
-          #use-black: # optional, default is true
-          # Use mypy
-          #use-mypy: # optional, default is true
-          # Use isort
-          #use-isort: # optional, default is true
-          # Extra options: pylint $(extra-pylint-options) $(python-root-list)
-          #extra-pylint-options: # optional, default is 
-          # Extra options: pycodestyle $(extra-pycodestyle-options) $(python-root-list)
-          #extra-pycodestyle-options: # optional, default is 
-          # Extra options: flake8 $(extra-flake8-options) $(python-root-list)
-          #extra-flake8-options: # optional, default is 
-          # Extra options: black --check $(extra-black-options) $(python-root-list)
-          #extra-black-options: # optional, default is 
-          # Extra options: mypy $(extra-mypy-options) $(python-root-list)
-          #extra-mypy-options: # optional, default is 
-          # Extra options: isort -rc $(extra-isort-options) $(python-root-list) -c --diff 
-          #extra-isort-options: # optional, default is 
+        run: |
+          # Activate virtualenv
+          source python${{ matrix.python-version }}-venv/bin/activate
+          # Module to be tested
+          module=data_plane
+          # pylint
+          echo Running: pylint $module
+          pylint $module
+          if [ "$?" = "0" ]; then echo "Pylint ok"; else echo "Pylint error"; exit $exit_code; fi
+          # pycodestyle
+          echo Running: pycodestyle $module
+          pycodestyle $module
+          if [ "$?" = "0" ]; then echo "pycodestyle ok"; else echo "pycodestyle error"; exit $exit_code; fi
+          # flake8
+          echo Running: flake8 $module
+          flake8 $module
+          if [ "$?" = "0" ]; then echo "Flake8 ok"; else echo "Flake8 error"; exit $exit_code; fi
+          # black
+          echo Running: black --check $module
+          black --check $module
+          if [ "$?" = "0" ]; then echo "Black ok"; else echo "Black error"; exit $exit_code; fi
+          # mypy
+          # echo Running: mypy $module
+          # mypy $module
+          # if [ "$?" = "0" ]; then echo "mypy ok"; else echo "mypy error"; exit $exit_code; fi
+          # isort
+          echo Running: isort -rc $module -c --diff
+          isort -rc $module -c --diff
+          if [ "$?" = "0" ]; then echo "isort ok"; else echo "isort error"; exit $exit_code; fi
