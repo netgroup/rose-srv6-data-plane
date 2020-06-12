@@ -63,7 +63,7 @@ jobs:
         run: |
           python -m venv python${{ matrix.python-version }}-venv
           source python${{ matrix.python-version }}-venv/bin/activate
-          echo "::set-env name=PATH::$PATH"
+          ::set-env name=PATH::$PATH
 
       ########################
       # Install dependencies #
