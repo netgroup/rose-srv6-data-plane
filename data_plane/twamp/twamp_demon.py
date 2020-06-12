@@ -172,7 +172,7 @@ class EbpfInterf():
 
     def toggle_color(self):
         """Toggle color"""
-        
+
         if self.get_color() == self.blue:
             self.epbf.pfplm_change_active_color(self.mark[self.red])
         else:
@@ -307,7 +307,7 @@ class TestPacketReceiver(Thread):
         self.stop_event = stop_event
 
     def packet_recv_callback(self, packet):
-        """Called when a TWAMP packet is received. Pass the packet 
+        """Called when a TWAMP packet is received. Pass the packet
         to the corresponding handler"""
 
         # ss_udp_port and refl_udp_port are received from the controller
