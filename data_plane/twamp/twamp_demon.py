@@ -470,7 +470,7 @@ class SessionSender(Thread):
         )
 
         pkt = (ipv6_packet / srv6_header / ipv6_packet_inside /
-                udp_packet / twamp_data)
+               udp_packet / twamp_data)
 
         print(
             "SS - SEND QUERY SL {sl} -  SN {sn} - TXC {txc} - C {col}"
@@ -492,7 +492,8 @@ class SessionSender(Thread):
         resp = packet[twamp.TWAMPTestResponse]
 
         # Read the RX counter FW path
-        nopunt_sid_list = utils.rem_punt(sid_list)[::-1]  # no punt and reversed
+        nopunt_sid_list = utils.rem_punt(
+            sid_list)[::-1]  # no punt and reversed
         ss_receive_counter = self.hwadapter.read_rx_counter(
             resp.BlockNumber, nopunt_sid_list)
 
@@ -638,7 +639,8 @@ class SessionReflector(Thread):
     def send_twamp_test_response(self, sid_list, sender_block_color,
                                  sender_counter, sender_seq_num):
         # Read the RX counter FW path
-        nopunt_sid_list = utils.rem_punt(sid_list)[::-1]  # no punt and reversed
+        nopunt_sid_list = utils.rem_punt(
+            sid_list)[::-1]  # no punt and reversed
         rf_receive_counter = self.hwadapter.read_rx_counter(
             sender_block_color, nopunt_sid_list)
 
