@@ -8,6 +8,7 @@ import sched
 import time
 from datetime import datetime, timedelta
 import math
+import netifaces
 # import subprocess
 # import shlex
 
@@ -20,8 +21,6 @@ from scapy.layers.inet6 import IPv6, IPv6ExtHdrSegmentRouting
 from srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
 from data_plane.twamp import twamp
 from data_plane.twamp import utils
-
-import netifaces
 
 # Folder containing this script
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
