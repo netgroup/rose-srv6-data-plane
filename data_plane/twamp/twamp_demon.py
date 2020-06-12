@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
 import os
 import sys
 from threading import Thread
@@ -28,10 +29,7 @@ if SRV6_PM_XDP_EBPF_PATH is None:
     exit(-2)
 SRV6_PFPLM_PATH = os.path.join(SRV6_PM_XDP_EBPF_PATH, 'srv6-pfplm/')
 
-sys.path.append(SRV6_PFPLM_PATH)
-
-
-from srv6_pfplm_helper_user import EbpfException, EbpfPFPLM  # pylint: disable=wrong-import-position
+# sys.path.append(SRV6_PFPLM_PATH)
 
 
 ''' ***************************************** DRIVER EBPF '''
