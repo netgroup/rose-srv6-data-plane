@@ -55,27 +55,27 @@ def test_meas():
 
         print("\n-------------- startMeas --------------\n")
         sender_res = startExperimentSender(stub)
-        if sender_res != None and sender_res.status == 1:
-            print("Started Measure RES:"+str(sender_res.status))
+        if sender_res is not None and sender_res.status == 1:
+            print("Started Measure RES:" + str(sender_res.status))
         else:
-            print("ERROR startExperimentSender  RES:"+sender_res)
+            print("ERROR startExperimentSender  RES:" + sender_res)
 
         for i in range(3):
             time.sleep(5)
             print("\n-------------- get Meas Data --------------\n")
             sender_res = retriveExperimentResultsSender(stub)
             if sender_res is not None:
-                print("Received Loss Data RES:"+str(sender_res.status))
+                print("Received Loss Data RES:" + str(sender_res.status))
             else:
-                print("ERROR retriveExperimentResultsSender RES:"+sender_res)
+                print("ERROR retriveExperimentResultsSender RES:" + sender_res)
 
         time.sleep(2)
         print("\n-------------- stop Meas --------------\n")
         sender_res = stopExperimentSender(stub)
         if sender_res is not None and sender_res.status == 1:
-            print("Stopped Measure RES:"+str(sender_res.status))
+            print("Stopped Measure RES:" + str(sender_res.status))
         else:
-            print("ERROR startExperimentSender RES:"+sender_res)
+            print("ERROR startExperimentSender RES:" + sender_res)
 
 
 def test_meas_2():
@@ -88,44 +88,44 @@ def test_meas_2():
         print("\n-------------- startMeas --------------\n")
         sender_res = startExperimentSender(sender)
         if sender_res is not None and sender_res.status == 1:
-            print("Started Measure Sender RES:"+str(sender_res.status))
+            print("Started Measure Sender RES:" + str(sender_res.status))
         else:
-            print("ERROR startExperimentSender  RES:"+sender_res)
+            print("ERROR startExperimentSender  RES:" + sender_res)
 
         refl_res = startExperimentReflector(reflector)
         if refl_res is not None and refl_res.status == 1:
-            print("Started Measure Reflector RES:"+str(refl_res.status))
+            print("Started Measure Reflector RES:" + str(refl_res.status))
         else:
-            print("ERROR startExperimentReflector  RES:"+refl_res)
+            print("ERROR startExperimentReflector  RES:" + refl_res)
 
         for i in range(3):
             time.sleep(5)
             print("\n-------------- get Meas Data --------------\n")
             sender_res = retriveExperimentResultsSender(sender)
             if sender_res is not None:
-                print("Received Data Sender RES:"+str(sender_res.status))
+                print("Received Data Sender RES:" + str(sender_res.status))
             else:
-                print("ERROR retriveExperimentResultsSender RES:"+sender_res)
+                print("ERROR retriveExperimentResultsSender RES:" + sender_res)
 
             refl_res = retriveExperimentResultsReflector(reflector)
             if refl_res is not None:
-                print("Received Data Reflector RES:"+str(refl_res.status))
+                print("Received Data Reflector RES:" + str(refl_res.status))
             else:
-                print("ERROR retriveExperimentResultsReflector RES:"+refl_res)
+                print("ERROR retriveExperimentResultsReflector RES:" + refl_res)
 
         time.sleep(2)
         print("\n-------------- stop Meas --------------\n")
         sender_res = stopExperimentSender(sender)
         if sender_res is not None and sender_res.status == 1:
-            print("Stopped Measure RES:"+str(sender_res.status))
+            print("Stopped Measure RES:" + str(sender_res.status))
         else:
-            print("ERROR startExperimentSender RES:"+sender_res)
+            print("ERROR startExperimentSender RES:" + sender_res)
 
         refl_res = stopExperimentReflector(reflector)
         if refl_res is not None and refl_res.status == 1:
-            print("Stopped Measure RES:"+str(refl_res.status))
+            print("Stopped Measure RES:" + str(refl_res.status))
         else:
-            print("ERROR startExperimentSender RES:"+refl_res)
+            print("ERROR startExperimentSender RES:" + refl_res)
 
 
 if __name__ == '__main__':
