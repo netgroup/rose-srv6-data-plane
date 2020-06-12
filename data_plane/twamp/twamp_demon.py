@@ -344,9 +344,9 @@ class TestPacketReceiver(Thread):
 
 
 class SessionSender(Thread):
-    def __init__(self, driver, stop_event=None):
     """A class representing a sender implemented as a thread"""
 
+    def __init__(self, driver, stop_event=None):
         Thread.__init__(self)
         self.started_meas = False
 

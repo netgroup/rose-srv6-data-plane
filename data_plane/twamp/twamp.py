@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+
+"""This module contains classes representing TWAMP packets"""
+
+
 from scapy.all import (Packet,
                        IntField,
                        LongField,
@@ -13,6 +17,8 @@ from scapy.all import (Packet,
 
 
 class TWAMPTestQuery(Packet):
+    """A packet representing a TWAMP query"""
+
     name = "TWAMPQuery"
     fields_desc = [IntField("SequenceNumber", 0),
                    LongField("TransmitCounter", 0),
@@ -31,6 +37,8 @@ class TWAMPTestQuery(Packet):
 
 
 class TWAMPTestResponse(Packet):
+    """A packet representing a TWAMP response"""
+
     name = "TWAMPResponse"
     fields_desc = [IntField("SequenceNumber", 0),
                    LongField("TransmitCounter", 0),
@@ -47,6 +55,7 @@ class TWAMPTestResponse(Packet):
                    BitField("MBZ", 0, 6),
                    XByteField("SenderBlockNumber", 0),
                    XByteField("MBZ", 0),
-                   ByteEnumField("ReceverControlCode", 0, {
-                                 1: "Error - Invalid Message"}),
+                   ByteEnumField(
+                       "ReceverControlCode", 0, {
+                           1: "Error - Invalid Message"}),
                    XByteField("SenderTTL", 0)]  # manca il padding
