@@ -1,7 +1,8 @@
 #!/usr/bin/python
 
 ##########################################################################
-# Copyright (C) 2020 Carmine Scarpitta - (Consortium GARR and University of Rome "Tor Vergata")
+# Copyright (C) 2020 Carmine Scarpitta
+# (Consortium GARR and University of Rome "Tor Vergata")
 # www.garr.it - www.uniroma2.it/netgroup
 #
 #
@@ -25,6 +26,9 @@
 
 """This module contains some utilities to perform traffic
 generation and monitoring with iperf3"""
+
+# Disable pylint warnings on todos to avoid annoying pylint warnings
+# pylint: disable=fixme
 
 try:
     import grpc
@@ -167,7 +171,7 @@ def parse_data_server(data, verbose=False):
         print('Parsing line:  %s' % data)
     # Search pattern
     match = re.search(
-        r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)',   # pylint: disable=line-too-long
+        r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)',   # pylint: disable=line-too-long  # noqa=E501
         data)
     # Group 1.	Interval
     # Group 2.	Transfer
@@ -208,7 +212,7 @@ def parse_data_client(data, verbose=False):
     if verbose:
         print('Parsing line:  %s' % data)
     # Search pattern
-    match = re.search(r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)\s+(\d+)\s+(\d+.\d+)\s+(MBytes|KBytes|Mbits|Kbits|Bytes|bits)',   # pylint: disable=line-too-long
+    match = re.search(r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)\s+(\d+)\s+(\d+.\d+)\s+(MBytes|KBytes|Mbits|Kbits|Bytes|bits)',   # pylint: disable=line-too-long  # noqa=E501
                       data)
 
     # Group 1.	Interval

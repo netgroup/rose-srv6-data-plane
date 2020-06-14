@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Disable pylint warnings on todos
+# Disable pylint warnings on todos to avoid annoying pylint warnings
 # pylint: disable=fixme
 
 """This module implements several functionalities of a TWAMP deaemon"""
