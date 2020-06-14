@@ -23,14 +23,25 @@
 #
 
 
-import srv6pmServiceController_pb2_grpc
-import srv6pmServiceController_pb2
-import grpc
-from dotenv import load_dotenv
-import sys
+"""This module contains some utilities to perform traffic
+generation and monitoring with iperf3"""
+
+try:
+    import grpc
+    import srv6pmServiceController_pb2_grpc
+    import srv6pmServiceController_pb2
+except ImportError:
+    ENABLE_CONTROLLER_INTEGRATION = False
+    print('WARNING: rose-srv6-protos not installed.'
+          'Controller integration is disabled')
 import logging
 import json
-from kafka import KafkaProducer
+try:
+    from kafka import KafkaProducer
+    ENABLE_KAFKA_INTEGRATION = True
+except ImportError:
+    ENABLE_KAFKA_INTEGRATION = False
+    print('WARNING: kafka-python not installed. Kafka features are disabled')
 import atexit
 import re
 from subprocess import Popen, PIPE
@@ -38,69 +49,12 @@ from argparse import ArgumentParser
 import signal
 import os
 
-# Activate virtual environment if a venv path has been specified in .venv
-# This must be executed only if this file has been executed as a
-# script (instead of a module)
-if __name__ == '__main__':
-    # Check if .venv file exists
-    if os.path.exists('.venv'):
-        with open('.venv', 'r') as venv_file:
-            # Get virtualenv path from .venv file
-            # and remove trailing newline chars
-            venv_path = venv_file.read().rstrip()
-        # Get path of the activation script
-        venv_path = os.path.join(venv_path, 'bin/activate_this.py')
-        if not os.path.exists(venv_path):
-            print('Virtual environment path specified in .venv '
-                  'points to an invalid path\n')
-            exit(-2)
-        with open(venv_path) as f:
-            # Read the activation script
-            code = compile(f.read(), venv_path, 'exec')
-            # Execute the activation script to activate the venv
-            exec(code, {'__file__': venv_path})
-
 
 # Load environment variables from .env file
-load_dotenv()
+# load_dotenv()
 
 # Folder containing this script
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
-
-# Folder containing the files auto-generated from proto files
-PROTO_PATH = os.path.join(BASE_PATH, '../protos/gen-py/')
-
-# Environment variables have priority over hardcoded paths
-# If an environment variable is set, we must use it instead of
-# the hardcoded constant
-if os.getenv('PROTO_PATH') is not None:
-    # Check if the PROTO_PATH variable is set
-    if os.getenv('PROTO_PATH') == '':
-        print('Error : Set PROTO_PATH variable in .env\n')
-        sys.exit(-2)
-    # Check if the PROTO_PATH variable points to an existing folder
-    if not os.path.exists(os.getenv('PROTO_PATH')):
-        print('Error : PROTO_PATH variable in '
-              '.env points to a non existing folder')
-        sys.exit(-2)
-    # PROTO_PATH in .env is correct. We use it.
-    PROTO_PATH = os.getenv('PROTO_PATH')
-else:
-    # PROTO_PATH in .env is not set, we use the hardcoded path
-    #
-    # Check if the PROTO_PATH variable is set
-    if PROTO_PATH == '':
-        print('Error : Set PROTO_PATH variable in .env or %s' % sys.argv[0])
-        sys.exit(-2)
-    # Check if the PROTO_PATH variable points to an existing folder
-    if not os.path.exists(PROTO_PATH):
-        print('Error : PROTO_PATH variable in '
-              '%s points to a non existing folder' % sys.argv[0])
-        print('Error : Set PROTO_PATH variable in .env or %s\n' % sys.argv[0])
-        sys.exit(-2)
-
-# Add PROTO folder
-sys.path.append(PROTO_PATH)
 
 # Logger reference
 logging.basicConfig(level=logging.NOTSET)
@@ -115,15 +69,21 @@ TOPIC = 'iperf'
 # SRv6PM dependencies
 
 # Controller IP and port
-grpc_ip_controller = 'fcfd:0:0:fd::1'        # TODO remove hardcoded param
-grpc_port_controller = 50051        # TODO remove hardcoded param
+GRPC_IP_CONTROLLER = 'fcfd:0:0:fd::1'        # TODO remove hardcoded param
+GRPC_PORT_CONTROLLER = 50051        # TODO remove hardcoded param
 # gRPC channel
 channel = channel = grpc.insecure_channel(
     'ipv6:[%s]:%s' %
-    (grpc_ip_controller, grpc_port_controller))  # TODO remove hardcoded param
+    (GRPC_IP_CONTROLLER, GRPC_PORT_CONTROLLER))  # TODO remove hardcoded param
+
 
 PUBLISH_TO_KAFKA = False
 SEND_DATA_TO_CONTROLLER = True
+
+
+PUBLISH_TO_KAFKA = ENABLE_KAFKA_INTEGRATION and PUBLISH_TO_KAFKA
+SEND_DATA_TO_CONTROLLER = ENABLE_CONTROLLER_INTEGRATION and \
+    SEND_DATA_TO_CONTROLLER
 
 
 def publish_data_to_kafka(
@@ -132,6 +92,8 @@ def publish_data_to_kafka(
         generator_id,
         data,
         verbose=False):
+    """Publish iperf3 data to Kafka"""
+
     data['from'] = _from
     data['measure_id'] = measure_id
     data['generator_id'] = generator_id
@@ -158,6 +120,8 @@ def publish_data_to_kafka(
 
 def send_data_to_controller(_from, measure_id,
                             generator_id, data, verbose=False):
+    """Send iperf3 data to a controller through the gRPC interface"""
+
     data['_from'] = _from
     data['measure_id'] = measure_id
     data['generator_id'] = generator_id
@@ -168,7 +132,7 @@ def send_data_to_controller(_from, measure_id,
     request = srv6pmServiceController_pb2.SendIperfDataRequest()
     iperf_data = request.iperf_data.add()
     # From server/client
-    iperf_data._from = str(_from)
+    iperf_data._from = str(_from)         # pylint: disable=protected-access
     # Measure ID
     iperf_data.measure_id = int(measure_id)
     # Generator ID
@@ -197,11 +161,13 @@ def send_data_to_controller(_from, measure_id,
 
 
 def parse_data_server(data, verbose=False):
+    """Parse a line of the log generated by the iperf3 server"""
+
     if verbose:
         print('Parsing line:  %s' % data)
     # Search pattern
-    m = re.search(
-        r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)',
+    match = re.search(
+        r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)',   # pylint: disable=line-too-long
         data)
     # Group 1.	Interval
     # Group 2.	Transfer
@@ -211,15 +177,15 @@ def parse_data_server(data, verbose=False):
     # Group 6.	no needed
 
     # Match
-    if (m):
+    if match:
         # Extract interval
-        interval = m.group(1)
+        interval = match.group(1)
         # Extract transfer
-        transfer = m.group(2)
-        transfer_dim = m.group(3)
+        transfer = match.group(2)
+        transfer_dim = match.group(3)
         # Extract bitrate
-        bitrate = m.group(4)
-        bitrate_dim = m.group(5)
+        bitrate = match.group(4)
+        bitrate_dim = match.group(5)
         # Build results dict
         res = {
             'interval': interval,
@@ -232,14 +198,18 @@ def parse_data_server(data, verbose=False):
             print('Got %s\n' % res)
         # Return results
         return res
+    # No match
+    return None
 
 
 def parse_data_client(data, verbose=False):
+    """Parse a line of the log generated by the iperf3 client"""
+
     if verbose:
         print('Parsing line:  %s' % data)
     # Search pattern
-    m = re.search(r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)\s+(\d+)\s+(\d+.\d+)\s+(MBytes|KBytes|Mbits|Kbits|Bytes|bits)',
-                  data)
+    match = re.search(r'^\[.+]\s+(\d+.\d+-\d+.\d+)\s+sec\s+(\d+.\d+)\s(MBytes|KBytes|Mbits|Kbits|Bytes|bits)\s+(\d+.\d+)\s+((MBytes|KBytes|Mbits|Kbits|Bytes|bits)+\/sec)\s+(\d+)\s+(\d+.\d+)\s+(MBytes|KBytes|Mbits|Kbits|Bytes|bits)',   # pylint: disable=line-too-long
+                      data)
 
     # Group 1.	Interval
     # Group 2.	Transfer
@@ -252,20 +222,20 @@ def parse_data_client(data, verbose=False):
     # Group 9.	Cwnd dimension
 
     # Match
-    if (m):
+    if match:
         # Extract interval
-        interval = m.group(1)
+        interval = match.group(1)
         # Extract transfer
-        transfer = m.group(2)
-        transfer_dim = m.group(3)
+        transfer = match.group(2)
+        transfer_dim = match.group(3)
         # Extract bitrate
-        bitrate = m.group(4)
-        bitrate_dim = m.group(5)
+        bitrate = match.group(4)
+        bitrate_dim = match.group(5)
         # Extract retr
-        retr = m.group(7)
+        retr = match.group(7)
         # Extract cwnd
-        cwnd = m.group(8)
-        cwnd_dim = m.group(9)
+        cwnd = match.group(8)
+        cwnd_dim = match.group(9)
         # Build results dict
         res = {
             'interval': interval,
@@ -281,9 +251,13 @@ def parse_data_client(data, verbose=False):
             print('Got %s\n' % res)
         # Return results
         return res
+    # No match
+    return None
 
 
 def cleanup(process):
+    """Cleanup function. Kill the iperf3 process"""
+
     # Terminate iperf3 process
     try:
         os.killpg(os.getpgid(process.pid), signal.SIGTERM)
@@ -295,6 +269,10 @@ def cleanup(process):
 
 def start_server(address, port=None, interval=None, measure_id=None,
                  generator_id=None, one_off=False, verbose=False):
+    """Start iperf3 server"""
+
+    # pylint: disable=too-many-arguments
+
     # Build the command to start the server
     cmd = 'iperf3 --forceflush --server --bind %s' % address
     # Server port
@@ -310,15 +288,15 @@ def start_server(address, port=None, interval=None, measure_id=None,
     if verbose:
         print(cmd)
     # Execute the command in a new process and redirect output to PIPE
-    p = Popen(cmd, shell=True, stdout=PIPE)
+    process = Popen(cmd, shell=True, stdout=PIPE)
     # Register process termination when the python program terminates
-    atexit.register(cleanup, process=p)
+    atexit.register(cleanup, process=process)
     # Iterate on the output generated by iperf3
     while True:
         # Read a line
-        out = p.stdout.readline().decode()
+        out = process.stdout.readline().decode()
         # Check if the process has terminated
-        if out == '' and p.poll() is not None:
+        if out == '' and process.poll() is not None:
             break
         # Parse the output generated by iperf3
         if out != '':
@@ -328,9 +306,10 @@ def start_server(address, port=None, interval=None, measure_id=None,
                 # Publish data to Kafka
                 if PUBLISH_TO_KAFKA:
                     publish_data_to_kafka(
+                        _from='server',
                         measure_id=measure_id,
                         generator_id=generator_id,
-                        res=res,
+                        data=res,
                         verbose=verbose
                     )
                 # Send data to the controller
@@ -349,6 +328,10 @@ def start_client(client_address, server_address, server_port=None,
                  num_streams=None, mss=None, bidir=False,
                  reverse=False, zerocopy=False, version6=False,
                  measure_id=None, generator_id=None, verbose=False):
+    """Start iperf3 client"""
+
+    # pylint: disable=too-many-branches, too-many-arguments, too-many-locals
+
     # Build the command to start the server
     cmd = 'iperf3 --forceflush --client %s' % server_address
     # Only use IPv6
@@ -388,15 +371,15 @@ def start_client(client_address, server_address, server_port=None,
     if verbose:
         print(cmd)
     # Execute the command in a new process and redirect output to PIPE
-    p = Popen(cmd, shell=True, stdout=PIPE)
+    process = Popen(cmd, shell=True, stdout=PIPE)
     # Register process termination when the python program terminates
-    atexit.register(cleanup, process=p)
+    atexit.register(cleanup, process=process)
     # Iterate on the output generated by iperf3
     while True:
         # Read a line
-        out = p.stdout.readline().decode()
+        out = process.stdout.readline().decode()
         # Check if the process has terminated
-        if out == '' and p.poll() is not None:
+        if out == '' and process.poll() is not None:
             break
         # Parse the output generated by iperf3
         if out != '':
@@ -406,9 +389,10 @@ def start_client(client_address, server_address, server_port=None,
                 # Publish data to Kafka
                 if PUBLISH_TO_KAFKA:
                     publish_data_to_kafka(
+                        _from='client',
                         measure_id=measure_id,
                         generator_id=generator_id,
-                        res=res,
+                        data=res,
                         verbose=verbose
                     )
                 # Send data to the controller
@@ -532,7 +516,9 @@ def parse_arguments():
     return args
 
 
-if __name__ == "__main__":
+def __main():
+    # pylint: disable=too-many-locals
+
     # Parse arguments
     args = parse_arguments()
     # Run in server mode
@@ -574,6 +560,15 @@ if __name__ == "__main__":
     debug = args.debug
     # Define whether to enable verbose mode or not
     verbose = args.verbose
+    #
+    # Setup properly the logger
+    if debug:
+        logger.setLevel(level=logging.DEBUG)
+    else:
+        logger.setLevel(level=logging.INFO)
+    # Debug settings
+    server_debug = logger.getEffectiveLevel() == logging.DEBUG
+    logging.info('SERVER_DEBUG: %s', str(server_debug))
     # Start server/client
     if server and client:
         print('Parameter error: cannot be both server and client')
@@ -609,3 +604,7 @@ if __name__ == "__main__":
         )
     else:
         print('Invalid params')
+
+
+if __name__ == "__main__":
+    __main()
