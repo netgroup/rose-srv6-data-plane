@@ -9,8 +9,6 @@ proto_dist/*
 *.log
 *.swp
 
+build/
 *.egg-info
 *.egg
-build/
-
-.env
