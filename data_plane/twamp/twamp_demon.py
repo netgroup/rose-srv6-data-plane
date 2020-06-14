@@ -6,15 +6,13 @@
 """This module implements several functionalities of a TWAMP deaemon"""
 
 # General imports
+import math
 import os
-import sys
-from threading import Thread
 import sched
+import sys
 import time
 from datetime import datetime, timedelta
-import math
-# import subprocess
-# import shlex
+from threading import Thread
 
 # Scapy dependencies
 from scapy.all import send, sniff
@@ -23,6 +21,13 @@ from scapy.layers.inet6 import IPv6, IPv6ExtHdrSegmentRouting
 
 # Netifaces dependencies
 import netifaces
+# Data-plane dependencies
+from data_plane.twamp import twamp, utils
+
+# import subprocess
+# import shlex
+
+
 
 # SRv6 PM and data-plane dependencies
 try:
@@ -32,8 +37,6 @@ except ImportError:
     # srv6_pfplm_helper_user does not exist or not in the PYTHONPATH
     print('ERROR: srv6_pfplm_helper_user not found. Is it installed?')
     sys.exit(-2)
-from data_plane.twamp import twamp
-from data_plane.twamp import utils
 
 # Folder containing this script
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))

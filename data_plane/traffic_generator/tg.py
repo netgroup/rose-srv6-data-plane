@@ -30,6 +30,22 @@ generation and monitoring with iperf3"""
 # Disable pylint warnings on todos to avoid annoying pylint warnings
 # pylint: disable=fixme
 
+import atexit
+import json
+import logging
+import os
+import re
+import signal
+from argparse import ArgumentParser
+from subprocess import PIPE, Popen
+
+try:
+    from kafka import KafkaProducer
+    ENABLE_KAFKA_INTEGRATION = True
+except ImportError:
+    ENABLE_KAFKA_INTEGRATION = False
+    print('WARNING: kafka-python not installed. Kafka features are disabled')
+
 try:
     import grpc
     import srv6pmServiceController_pb2_grpc
@@ -38,21 +54,6 @@ except ImportError:
     ENABLE_CONTROLLER_INTEGRATION = False
     print('WARNING: rose-srv6-protos not installed.'
           'Controller integration is disabled')
-import logging
-import json
-try:
-    from kafka import KafkaProducer
-    ENABLE_KAFKA_INTEGRATION = True
-except ImportError:
-    ENABLE_KAFKA_INTEGRATION = False
-    print('WARNING: kafka-python not installed. Kafka features are disabled')
-import atexit
-import re
-from subprocess import Popen, PIPE
-from argparse import ArgumentParser
-import signal
-import os
-
 
 # Load environment variables from .env file
 # load_dotenv()

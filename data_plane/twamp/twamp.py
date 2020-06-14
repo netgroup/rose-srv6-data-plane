@@ -4,16 +4,9 @@
 """This module contains classes representing TWAMP packets"""
 
 
-from scapy.all import (Packet,
-                       IntField,
-                       LongField,
-                       BitEnumField,
-                       BitField,
-                       ByteField,
-                       ShortField,
-                       ThreeBytesField,
-                       ByteEnumField,
-                       XByteField)
+from scapy.all import (BitEnumField, BitField, ByteEnumField, ByteField,
+                       IntField, LongField, Packet, ShortField,
+                       ThreeBytesField, XByteField)
 
 
 class TWAMPTestQuery(Packet):
