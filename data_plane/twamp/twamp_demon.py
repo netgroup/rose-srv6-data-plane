@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+# Disable pylint warnings on todos
+# pylint: disable=fixme
+
+"""This module implements several functionalities of a TWAMP deaemon"""
+
 # General imports
 import os
 import sys
@@ -20,7 +25,13 @@ from scapy.layers.inet6 import IPv6, IPv6ExtHdrSegmentRouting
 import netifaces
 
 # SRv6 PM and data-plane dependencies
-from srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
+try:
+    # srv6_pfplm_helper_user repository is required to run this module
+    from srv6_pfplm_helper_user import EbpfException, EbpfPFPLM
+except ImportError:
+    # srv6_pfplm_helper_user does not exist or not in the PYTHONPATH
+    print('ERROR: srv6_pfplm_helper_user not found. Is it installed?')
+    sys.exit(-2)
 from data_plane.twamp import twamp
 from data_plane.twamp import utils
 
@@ -35,11 +46,13 @@ if SRV6_PM_XDP_EBPF_PATH is None:
 SRV6_PFPLM_PATH = os.path.join(SRV6_PM_XDP_EBPF_PATH, 'srv6-pfplm/')
 
 
-''' ***************************************** DRIVER EBPF '''
+# ''' ***************************************** DRIVER EBPF '''
 
 
 class EbpfInterf():
     """A class representing a driver eBPF"""
+
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, in_interfaces=None, out_interfaces=None):
         if len(in_interfaces) == 0:
@@ -63,18 +76,18 @@ class EbpfInterf():
             for intf in in_interfaces:
                 try:
                     self.epbf.load_ingress(intf)
-                except EbpfException as e:
-                    e.print_exception()
+                except EbpfException as err:
+                    err.print_exception()
             for intf in out_interfaces:
                 try:
                     self.epbf.load_egress(intf)
-                except EbpfException as e:
-                    e.print_exception()
+                except EbpfException as err:
+                    err.print_exception()
 
             self.epbf.pfplm_change_active_color(self.mark[self.blue])
 
-        except EbpfException as e:
-            e.print_exception()
+        except EbpfException as err:
+            err.print_exception()
 
     def stop(self):
         """Unload the eBPF program from all the interfaces"""
@@ -84,16 +97,16 @@ class EbpfInterf():
             for intf in self.epbf_interfs_igr:
                 try:
                     self.epbf.unload_ingress(intf)
-                except EbpfException as e:
-                    e.print_exception()
+                except EbpfException as err:
+                    err.print_exception()
             for intf in self.epbf_interfs_egr:
                 try:
                     self.epbf.unload_egress(intf)
-                except EbpfException as e:
-                    e.print_exception()
+                except EbpfException as err:
+                    err.print_exception()
 
-        except EbpfException as e:
-            e.print_exception()
+        except EbpfException as err:
+            err.print_exception()
 
     def set_sidlist_out(self, sid_list):
         """Add a SID list from the monitored egress interface"""
@@ -109,8 +122,8 @@ class EbpfInterf():
         print('EBPF INS OUT sidlist', ebpf_sid_list)
         try:
             self.epbf.pfplm_add_flow(self.egr, ebpf_sid_list)
-        except EbpfException as e:
-            e.print_exception()
+        except EbpfException as err:
+            err.print_exception()
 
     def set_sidlist_in(self, sid_list):
         """Add a SID list from the monitored ingress interface"""
@@ -126,8 +139,8 @@ class EbpfInterf():
         print('EBPF INS IN sidlist', ebpf_sid_list)
         try:
             self.epbf.pfplm_add_flow(self.igr, ebpf_sid_list)
-        except EbpfException as e:
-            e.print_exception()
+        except EbpfException as err:
+            err.print_exception()
 
     def rem_sidlist_out(self, sid_list):
         """Remove SID list from the monitored egress interface"""
@@ -136,8 +149,8 @@ class EbpfInterf():
         print('EBPF REM sidlist', ebpf_sid_list)
         try:
             self.epbf.pfplm_del_flow(self.egr, ebpf_sid_list)  # da testare
-        except EbpfException as e:
-            e.print_exception()
+        except EbpfException as err:
+            err.print_exception()
 
     def rem_sidlist_in(self, sid_list):
         """Remove SID list from the monitored ingress interface"""
@@ -146,8 +159,8 @@ class EbpfInterf():
         print('EBPF REM sidlist', ebpf_sid_list)
         try:
             self.epbf.pfplm_del_flow(self.igr, ebpf_sid_list)  # da testare
-        except EbpfException as e:
-            e.print_exception()
+        except EbpfException as err:
+            err.print_exception()
 
     def set_color(self, color):
         """Change color"""
@@ -172,7 +185,7 @@ class EbpfInterf():
 
     def toggle_color(self):
         """Toggle color"""
-        
+
         if self.get_color() == self.blue:
             self.epbf.pfplm_change_active_color(self.mark[self.red])
         else:
@@ -290,7 +303,7 @@ class EbpfInterf():
 #             return 'red-ht-' + direction
 
 
-''' ***************************************** TWAMP RECEIVER '''
+# ''' ***************************************** TWAMP RECEIVER '''
 
 
 class TestPacketReceiver(Thread):
@@ -298,6 +311,9 @@ class TestPacketReceiver(Thread):
 
     def __init__(self, interface, sender, reflector,
                  ss_udp_port=1206, refl_udp_port=1205, stop_event=None):
+
+        # pylint: disable=too-many-arguments
+
         Thread.__init__(self)
         self.interface = interface
         self.session_sender = sender
@@ -307,7 +323,7 @@ class TestPacketReceiver(Thread):
         self.stop_event = stop_event
 
     def packet_recv_callback(self, packet):
-        """Called when a TWAMP packet is received. Pass the packet 
+        """Called when a TWAMP packet is received. Pass the packet
         to the corresponding handler"""
 
         # ss_udp_port and refl_udp_port are received from the controller
@@ -327,7 +343,7 @@ class TestPacketReceiver(Thread):
         """Start sniffing for TWAMP packets"""
 
         # Create stop filter for scapy sniff
-        def stop_filter(p):
+        def stop_filter(pkt):        # pylint: disable=unused-argument
             return self.stop_event.is_set()
         # Start sniffing
         print('TestPacketReceiver Start sniffing...')
@@ -340,11 +356,13 @@ class TestPacketReceiver(Thread):
         # codice netqueue
 
 
-''' ***************************************** SENDER '''
+# ''' ***************************************** SENDER '''
 
 
 class SessionSender(Thread):
     """A class representing a sender implemented as a thread"""
+
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, driver, stop_event=None):
         Thread.__init__(self)
@@ -412,7 +430,7 @@ class SessionSender(Thread):
     #         # Wait
     #         time.sleep(self.margin)
 
-    ''' Thread Tasks'''
+    # ''' Thread Tasks'''
 
     def run(self):
         """Entry point for the thread, schedule the first change color event
@@ -459,7 +477,7 @@ class SessionSender(Thread):
             dm_time = time.mktime(self.get_nexttime_to_measure().timetuple())
             self.scheduler.enterabs(dm_time, 1, self.run_measure)
 
-    ''' TWAMP methods '''
+    # ''' TWAMP methods '''
 
     def send_twamp_test_query(self):
         """Send a TWAMP query to a reflector"""
@@ -543,14 +561,12 @@ class SessionSender(Thread):
             sn=resp.SenderSequenceNumber,
             tx=resp.SenderCounter,
             rx=resp.ReceiveCounter,
-            col=resp.SenderBlockNumber)
-        )
+            col=resp.SenderBlockNumber))
         print('---          RV: SN {sn} - TX {tx} - RX {rx} - C {col}'.format(
             sn=resp.SequenceNumber,
             tx=resp.TransmitCounter,
             rx=ss_receive_counter,
-            col=resp.BlockNumber)
-        )
+            col=resp.BlockNumber))
 
         self.monitored_path['lastMeas']['sssn'] = resp.SenderSequenceNumber
         self.monitored_path['lastMeas']['ssTXc'] = resp.SenderCounter
@@ -561,7 +577,7 @@ class SessionSender(Thread):
         self.monitored_path['lastMeas']['ssRXc'] = ss_receive_counter
         self.monitored_path['lastMeas']['rvColor'] = resp.BlockNumber
 
-    ''' Interface for the controller'''
+    # ''' Interface for the controller'''
 
     def start_meas(self, meas_id, sid_list, rev_sid_list):
         """Start a measurement process"""
@@ -609,7 +625,7 @@ class SessionSender(Thread):
         # TODO controllare la sid_list e rilanciate un eccezione
         return self.monitored_path['lastMeas'], self.monitored_path['meas_id']
 
-    ''' Utility methods '''
+    # ''' Utility methods '''
 
     def get_nexttime_to_change_color(self):
         """Return the next instant of change color"""
@@ -642,11 +658,13 @@ class SessionSender(Thread):
         return (num_interval - 1) % self.num_color
 
 
-''' ***************************************** REFLECTOR '''
+# ''' ***************************************** REFLECTOR '''
 
 
 class SessionReflector(Thread):
     """A class representing a reflector implemented as a thread"""
+
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, driver, stop_event=None):
         Thread.__init__(self)
@@ -695,11 +713,13 @@ class SessionReflector(Thread):
                 self.get_nexttime_to_change_color().timetuple())
             self.scheduler.enterabs(cc_time, 1, self.run_change_color)
 
-    ''' TWAMP methods '''
+    # ''' TWAMP methods '''
 
     def send_twamp_test_response(self, sid_list, sender_block_color,
                                  sender_counter, sender_seq_num):
         """Send a TWAMP response to the sender"""
+
+        # pylint: disable=too-many-locals
 
         # Read the RX counter FW path
         nopunt_sid_list = utils.rem_punt(
@@ -782,15 +802,14 @@ class SessionReflector(Thread):
             sl=sid_list,
             sn=query.SequenceNumber,
             txc=query.TransmitCounter,
-            col=query.BlockNumber)
-        )
+            col=query.BlockNumber))
 
         self.send_twamp_test_response(
             sid_list, query.BlockNumber,
             query.TransmitCounter, query.SequenceNumber
         )
 
-    ''' Interface for the controller'''
+    # ''' Interface for the controller'''
 
     def start_meas(
             self,
@@ -800,6 +819,8 @@ class SessionReflector(Thread):
             margin=5,
             num_color=2):
         """Start a measurement process"""
+
+        # pylint: disable=too-many-arguments
 
         if self.started_meas:
             return -1  # already started
@@ -838,7 +859,7 @@ class SessionReflector(Thread):
         # self.num_color = None
         return 1  # mettere in un try e semmai tornare errore
 
-    ''' Utility methods '''
+    # ''' Utility methods '''
 
     def get_nexttime_to_change_color(self):
         """Return the next instant of change color"""
