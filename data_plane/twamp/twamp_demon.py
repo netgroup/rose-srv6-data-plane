@@ -14,13 +14,13 @@ import time
 from datetime import datetime, timedelta
 from threading import Thread
 
+# Netifaces dependencies
+import netifaces
 # Scapy dependencies
 from scapy.all import send, sniff
 from scapy.layers.inet import UDP
 from scapy.layers.inet6 import IPv6, IPv6ExtHdrSegmentRouting
 
-# Netifaces dependencies
-import netifaces
 # Data-plane dependencies
 from data_plane.twamp import twamp, utils
 
