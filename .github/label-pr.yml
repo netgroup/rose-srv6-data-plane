@@ -2,7 +2,7 @@
   labels: ["typescript"]
 - regExp: ".*\\.sql+$"
   labels: ["database", "critical"]
-- regExp: "^docs/"
+- regExp: ".*/docs/"
   labels: ["documentation"]
 - regExp: ".*\\.png+$"
   labels: ["images"]
@@ -16,3 +16,5 @@
   labels: ["build"]
 - regExp: "^.github/"
   labels: ["github-workflow"]
+- regExp: ".*/.env"
+  labels: ["configuration"]
