@@ -1,7 +1,7 @@
 autopep8==1.5.1
 grpcio==1.27.2
 grpcio-tools==1.27.2
-protobuf==3.11.3
+protobuf==3.18.3
 pycodestyle==2.5.0
 pyroute2==0.5.11
 six==1.14.0
