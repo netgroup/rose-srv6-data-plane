@@ -1,5 +1,5 @@
 autopep8==1.5.1
-grpcio==1.27.2
+grpcio==1.53.0
 grpcio-tools==1.27.2
 protobuf==3.11.3
 pycodestyle==2.5.0
